@@ -8,8 +8,8 @@ mod lang_items;
 mod syscall;
 
 #[no_mangle]
-#[link_section = "_text.entry"]
-pub extren "C" fn _start() -> ! {
+#[link_section = "text.entry"]
+pub extern "C" fn _start() -> ! {
     clear_bss();
     exit(main());
     panic!("unreachable after sys_exit!");
