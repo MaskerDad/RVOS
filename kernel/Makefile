@@ -1,27 +1,26 @@
-# Building Objects
+# Building
 TARGET := riscv64gc-unknown-none-elf
 MODE := release
-MODE_ARGS := --release
+MODE_ARG := --release
 KERNEL_ELF := target/$(TARGET)/$(MODE)/kernel
 KERNEL_BIN := $(KERNEL_ELF).bin
+DISASM_TMP := target/$(TARGET)/$(MODE)/asm
 
-# Board
+# BOARD
 BOARD := qemu
 SBI ?= rustsbi
-BOOTLOADER = ../bootloader/$(SBI)-$(BOARD).bin
+BOOTLOADER := ../bootloader/$(SBI)-$(BOARD).bin
+
+# KERNEL ENTRY
+KERNEL_ENTRY_PA := 0x80200000
 
 # Binutils
 OBJDUMP := rust-objdump --arch-name=riscv64
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
-# Kernel Entry
-KERNEL_ENTRY := 0x80200000
+build: env $(KERNEL_BIN)
 
-# Building Kernel
-kernel:
-	@cargo build $(MODE_ARGS)
-
-env: 
+env:
 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
 	cargo install cargo-binutils
 	rustup component add rust-src
@@ -30,19 +29,20 @@ env:
 $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 
-build: env $(KERNEL_BIN)
-
-QEMU_ARGS := -machine virt \
-			 -nographic \
-			 -bios $(BOOTLOADER) \
-			 -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY)
-
-run-inner: build
-	@qemu-system-riscv64 $(QEMU_ARGS)
-
-run: run-inner
+kernel:
+	@cargo build $(MODE_ARG)
 
 clean:
 	@cargo clean
 
-.PHONY: clean build env kernel run run-inner
+run: run-inner
+
+QEMU_ARGS := -machine virt \
+			 -nographic \
+			 -bios $(BOOTLOADER) \
+			 -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA)
+
+run-inner: build
+	@qemu-system-riscv64 $(QEMU_ARGS)
+
+.PHONY: build env kernel clean run-inner
