@@ -36,6 +36,7 @@ pub fn clear_bss() {
 /// the rust entry-point of kernel
 #[no_mangle]
 pub fn rust_main() -> ! {
+    segment_info();
     clear_bss();
     logging::init();
     sbi::shutdown(false)
