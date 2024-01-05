@@ -33,9 +33,15 @@ pub fn clear_bss() {
     (sbss as usize..ebss as usize).for_each(|a| unsafe { (a as *mut u8).write_volatile(0) });
 }
 
-/// the rust entry-point of os
+/// the rust entry-point of kernel
 #[no_mangle]
 pub fn rust_main() -> ! {
+    clear_bss();
+    logging::init();
+    sbi::shutdown(false)
+}
+
+fn segment_info() {
     extern "C" {
         fn stext(); // begin addr of text segment
         fn etext(); // end addr of text segment
@@ -48,10 +54,7 @@ pub fn rust_main() -> ! {
         fn boot_stack_lower_bound(); // stack lower bound
         fn boot_stack_top(); // stack top
     }
-    clear_bss();
-    logging::init();
-    println!("[kernel] Hello, world!");
-    //rvos_logo();
+    println!("[kernel] Hello, RVOS!");    
     trace!(
         "[kernel] .text [{:#x}, {:#x})",
         stext as usize,
@@ -70,10 +73,6 @@ pub fn rust_main() -> ! {
         boot_stack_top as usize, boot_stack_lower_bound as usize
     );
     error!("[kernel] .bss [{:#x}, {:#x})", sbss as usize, ebss as usize);
-
-    // CI autotest success: sbi::shutdown(false)
-    // CI autotest failed : sbi::shutdown(true)
-    sbi::shutdown(false)
 }
 
 /*

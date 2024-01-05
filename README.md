@@ -5,6 +5,8 @@ Most of the code comes from rcore-tutorial, and based on this simple kernel, do 
 xv6-riscv writes the kernel code from machine mode, but this causes some trouble in debugging because the kernel must implement UART-related drivers first, which I'll create another branch to do. In the mainline code, we use 'sbi-RT' to provide runtime services to the kernel, and also use packages like 'riscv' to access registers, which saves us from having to redo the wheel and allows us to focus on the implementation of the operating system (but an understanding of SBI is essential).
 
 ## LibOS
+LibOS can output some basic information in the SEE environment.
+
 Let's see what needs to be done:
 1. Print character sequences to the terminal with the help of 'sbi-rt'
 2. Realize shutdown service with 'sbi-rt'
@@ -14,6 +16,8 @@ Let's see what needs to be done:
 6. Implement LOG level control
 
 ## BatchOS
+BatchOS implements privilege-level isolation, where the kernel program runs in S-Mode and a set of application programs are executed sequentially in U-Mode. These applications are queued for execution, and only after each program completes can the next one be executed. Once all the application programs have finished executing, the system exits.
+
 Let's see what needs to be done:
 1. U-Mode:
   * Implementing basic system calls in U-Mode, which is typically done by the standard library.
