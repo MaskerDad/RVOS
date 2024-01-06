@@ -19,6 +19,7 @@ Let's see what needs to be done:
 `BatchOS` implements privilege-level isolation, where the kernel program runs in S-Mode and a set of application programs are executed sequentially in U-Mode. These applications are queued for execution, and only after each program completes can the next one be executed. Once all the application programs have finished executing, the system exits.
 
 Let's see what needs to be done:
+
 1. U-Mode:
 
    * Implementing basic system calls in U-Mode, which is typically done by the standard library.
@@ -48,16 +49,30 @@ We are going to face some problems:
 
 2. How do Task switching and Trap switching fit together?
 
-  * For the kernel task switching scenario, the task execution flow is switched first,  and then the user Trap execution flow is switched. The two processes are actually independent of each other and do not  interfere with each other.
+   * For the kernel task switching scenario, the task execution flow is switched first,  and then the user Trap execution flow is switched. The two processes are actually independent of each other and do not  interfere with each other.
 
-  * `task_switch`
-  There is no privilege switching involved,  but the kernel stack is switched because the relevant fields of the kernel stack point to each application's independent  and distinct proprietary content.
+   * `task_switch`
+     There is no privilege switching involved,  but the kernel stack is switched because the relevant fields of the kernel stack point to each application's independent  and distinct proprietary content.
 
-  * `trap_switch`
-  Involving the switching of privilege level, kernel stack and user stack,  the application Trap falls into the kernel context trap_context is saved by the kernel stack.
+   * `trap_switch`
+     Involving the switching of privilege level, kernel stack and user stack,  the application Trap falls into the kernel context trap_context is saved by the kernel stack.
 
 3. Why are the registers contained in task_context and trap_context different?
 
    * `task_context`:  We only need to save the callee saved register because the compiler will insert code to save the caller saved register  for us.
 
-   * `trap_context`:  This is due to the user state program execution privileges or illegal instructions,  asynchronous interrupt caused by the execution stream switch, the compiler will not do any work for us,  so all the registers need to be saved and recovered by the kernel itself.
+   * `trap_context`:  This is due to the user state program execution privileges or illegal instructions,  asynchronous interrupt caused by the execution stream switch, the compiler will not do any work for us,  so all the registers need to be saved and recovered by the kernel itself. 
+
+---
+
+Let's see what needs to be done:
+
+- [ ] Ensure application isolation on physical addresses, which applications need to do before supporting virtual memory
+- [ ] Refactor the RVOS batch.rs module into two parts: loader and task
+  - [ ] loader: Loads the app into memory
+  - [ ] task: For task management
+    - [ ] Global task manager
+    - [ ] Task scheduling mechanisms
+
+- [ ] RVOS supports active surrender, which enables collaboration between multiple applications, thus improving the overall execution efficiency
+- [ ] RVOS supports time slice scheduling based on clock interrupts, so that each application obtains CPU usage more fairly
