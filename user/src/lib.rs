@@ -8,7 +8,7 @@ mod lang_items;
 mod syscall;
 
 #[no_mangle]
-#[link_section = "text.entry"]
+#[link_section = ".text.entry"]
 pub extern "C" fn _start() -> ! {
     clear_bss();
     exit(main());

@@ -32,7 +32,7 @@ impl TrapContext {
         let mut sstatus = sstatus::read();
         sstatus.set_spp(SPP::User);
         let mut cx = Self {
-            x: [0: 32],
+            x: [0; 32],
             sstatus,
             sepc: entry,
         };

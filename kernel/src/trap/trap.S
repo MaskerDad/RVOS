@@ -10,7 +10,7 @@
     .global __restore
     .align 2
 __alltraps:
-    cssrw sp, sscratch, sp
+    csrrw sp, sscratch, sp
     # now sp->kerne_stack, sscratch->user_stack
     
     # allocate a TrapContext on kernel_stack
@@ -64,7 +64,7 @@ __restore:
     ld x1, 1*8(sp)
     ld x3, 3*8(sp)
     .set n, 5
-    .rept
+    .rept 27
         LOAD_GP %n
         .set n, n+1
     .endr

@@ -73,9 +73,9 @@ impl AppManager {
 
     pub fn print_app_info(&self) {
         println!("[kernel] num_app = {}", self.num_app);
-        for i in 0..=self.num_app {
+        for i in 0..self.num_app {
             println!(
-                "[kernel] app_{} => [{:#x}, {#x})",
+                "[kernel] app_{} [{:#x}, {:#x})",
                 i,
                 self.app_start[i],
                 self.app_start[i + 1]
@@ -83,7 +83,7 @@ impl AppManager {
         }
     }
 
-    pub fn load_app(&self, app_id: usize) {
+    unsafe fn load_app(&self, app_id: usize) {
         // all apps completed
         if app_id >= self.num_app {
             println!("All applications completed!");
@@ -93,7 +93,7 @@ impl AppManager {
         println!("[kernel] Loading app_{}", app_id);
         
         // from {.data: app_start_(app_id)} to APP_BASE_ADDRESS
-        core::slice::from_raw_parts(APP_BASE_ADDRESS as *mut u8, APP_SIZE_LIMIT).fill(0);
+        core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, APP_SIZE_LIMIT).fill(0);
         let app_src = core::slice::from_raw_parts(
             self.app_start[app_id] as *const u8,
             self.app_start[app_id + 1] - self.app_start[app_id],  
@@ -136,7 +136,9 @@ pub fn init() {
 pub fn run_next_app() -> ! {
     let mut app_manager = APP_MANAGER.exclusive_access();
     let current_app = app_manager.get_current_app();
-    app_manager.load_app(current_app);
+    unsafe {
+        app_manager.load_app(current_app);
+    }
     app_manager.move_to_next_app();
     drop(app_manager);
     extern "C" {

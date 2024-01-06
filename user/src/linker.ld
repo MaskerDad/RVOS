@@ -15,7 +15,7 @@ SECTIONS
         *(.srodata .srodata.*)
     }
     .data : {
-        *(.data .data.*)a
+        *(.data .data.*)
         *(.sdata .sdata.*)
     }
     .bss : {
