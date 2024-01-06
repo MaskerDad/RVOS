@@ -26,3 +26,5 @@ Let's see what needs to be done:
   * The kernel needs to obtain the binary images of user programs and link them to the kernel's data segment.
   * Implementing trap isolation between U-Mode and S-Mode. Traps cause a change in the execution flow, and the kernel needs to save and restore the trap context.
   * Different system calls in U-Mode should point to different branches of the kernel's trap handler.
+
+## TimesharingOS
