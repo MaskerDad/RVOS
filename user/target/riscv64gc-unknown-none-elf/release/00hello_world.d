@@ -1,1 +1,0 @@
-/home/zq/contents/objs/RVOS/user/target/riscv64gc-unknown-none-elf/release/00hello_world: /home/zq/contents/objs/RVOS/user/src/bin/00hello_world.rs /home/zq/contents/objs/RVOS/user/src/console.rs /home/zq/contents/objs/RVOS/user/src/lang_items.rs /home/zq/contents/objs/RVOS/user/src/lib.rs /home/zq/contents/objs/RVOS/user/src/syscall.rs

@@ -1,8 +1,0 @@
-Unfortunately, RVOS does not currently implement file system functionality.
-RVOS must link userland applications to kernel data segments!
-These user_apps path: [../user/target/riscv64gc-unknown-none-elf/release/]
-app_0: 00hello_world
-app_1: 01store_fault
-app_2: 02power
-app_3: 03priv_inst
-app_4: 04priv_csr
