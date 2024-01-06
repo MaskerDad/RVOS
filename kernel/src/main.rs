@@ -7,7 +7,6 @@
 //!
 //! We then call [`println!`] to display `Hello, world!`.
 
-#![deny(missing_docs)]
 #![deny(warnings)]
 #![no_std]
 #![no_main]
@@ -16,13 +15,30 @@
 use core::arch::global_asm;
 use log::*;
 
+/*
 #[macro_use]
 mod console;
 mod lang_items;
 mod logging;
 mod sbi;
+mod batch;
+mod sync;
+mod syscall;
+mod trap;
+*/
+
+#[macro_use]
+mod console;
+pub mod batch;
+mod lang_items;
+mod logging;
+mod sbi;
+mod sync;
+pub mod syscall;
+pub mod trap;
 
 global_asm!(include_str!("entry.asm"));
+global_asm!(include_str!("link_app.S"));
 
 /// clear BSS segment
 pub fn clear_bss() {
@@ -33,9 +49,19 @@ pub fn clear_bss() {
     (sbss as usize..ebss as usize).for_each(|a| unsafe { (a as *mut u8).write_volatile(0) });
 }
 
-/// the rust entry-point of os
+/// the rust entry-point of kernel
 #[no_mangle]
 pub fn rust_main() -> ! {
+    clear_bss();
+    logging::init();
+    segment_info();
+    
+    trap::init();
+    batch::init();
+    batch::run_next_app();
+}
+
+fn segment_info() {
     extern "C" {
         fn stext(); // begin addr of text segment
         fn etext(); // end addr of text segment
@@ -48,10 +74,7 @@ pub fn rust_main() -> ! {
         fn boot_stack_lower_bound(); // stack lower bound
         fn boot_stack_top(); // stack top
     }
-    clear_bss();
-    logging::init();
-    println!("[kernel] Hello, world!");
-    //rvos_logo();
+    println!("[kernel] Hello, RVOS!");    
     trace!(
         "[kernel] .text [{:#x}, {:#x})",
         stext as usize,
@@ -70,10 +93,6 @@ pub fn rust_main() -> ! {
         boot_stack_top as usize, boot_stack_lower_bound as usize
     );
     error!("[kernel] .bss [{:#x}, {:#x})", sbss as usize, ebss as usize);
-
-    // CI autotest success: sbi::shutdown(false)
-    // CI autotest failed : sbi::shutdown(true)
-    sbi::shutdown(false)
 }
 
 /*
