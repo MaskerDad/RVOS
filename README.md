@@ -5,6 +5,8 @@ Most of the code comes from rcore-tutorial, and based on this simple kernel, do 
 xv6-riscv writes the kernel code from machine mode, but this causes some trouble in debugging because the kernel must implement UART-related drivers first, which I'll create another branch to do. In the mainline code, we use 'sbi-RT' to provide runtime services to the kernel, and also use packages like 'riscv' to access registers, which saves us from having to redo the wheel and allows us to focus on the implementation of the operating system (but an understanding of SBI is essential).
 
 ## LibOS
+![image-20240108163445142](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401081634265.png)
+
 `LibOS` can output some basic information in the SEE environment.
 
 Let's see what needs to be done:
@@ -16,6 +18,9 @@ Let's see what needs to be done:
 6. Implement LOG level control
 
 ## BatchOS
+
+![image-20240108163533259](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401081635289.png)
+
 `BatchOS` implements privilege-level isolation, where the kernel program runs in S-Mode and a set of application programs are executed sequentially in U-Mode. These applications are queued for execution, and only after each program completes can the next one be executed. Once all the application programs have finished executing, the system exits.
 
 Let's see what needs to be done:
@@ -35,6 +40,8 @@ Let's see what needs to be done:
      * Different system calls in U-Mode should point to different branches of the kernel's trap handler.
 
 ## TimesharingOS
+
+![image-20240108163653820](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401081636849.png)
 
 `TimesharingOS`:  This version of the kernel supports multiple applications residing in memory and implements simple task scheduling,  including two types:  application active abandonment and clock interrupt-based preemption. Multiple applications alternate execution until  complete.
 
