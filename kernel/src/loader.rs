@@ -5,11 +5,13 @@ use crate::trap::TrapContext;
 use core::arch::asm;
 
 #[repr(align(4096))]
+#[derive(Copy, Clone)]
 struct UserStack {
     data: [u8; USER_STACK_SIZE],
 }
 
 #[repr(align(4096))]
+#[derive(Copy, Clone)]
 struct KernelStack {
     data: [u8; KERNEL_STACK_SIZE],
 }
@@ -47,19 +49,56 @@ impl KernelStack {
     }
 }
 
-//TODO
+/** load all apps **/
+fn get_num_app() -> usize {
+    extern "C" {
+        fn _num_app();
+    }
+    unsafe {
+        (_num_app as usize as *const usize).read_volatile()
+    }
+}
+
+fn get_app_base(i: usize) -> usize {
+    APP_BASE_ADDRESS + i * APP_SIZE_LIMIT
+}
+
 pub fn load_apps() {
+    extern "C" {
+        fn _num_app();
+    }
+    println!("[kernel] Loading all apps...");
     
-    println!("[kernel] Loading app_{}", app_id);
+    let num_app_ptr = _num_app as usize as *const usize;
+    let num_app = get_num_app();
+    let app_start = unsafe {
+        core::slice::from_raw_parts(num_app_ptr.add(1), num_app + 1)  
+    };
     
-    // from {.data: app_start_(app_id)} to APP_BASE_ADDRESS
-    core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, APP_SIZE_LIMIT).fill(0);
-    let app_src = core::slice::from_raw_parts(
-        self.app_start[app_id] as *const u8,
-        self.app_start[app_id + 1] - self.app_start[app_id],  
-    );
-    let app_dst = core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, app_src.len());
-    app_dst.copy_from_slice(app_src);
-    
-    asm!("fence.i");
+    unsafe {
+        asm!("fence.i");
+    }
+    //begin load apps
+    for i in 0..num_app {
+        let app_base = get_app_base(i);
+        //clear memory
+        (app_base..app_base + APP_SIZE_LIMIT)
+            .for_each(|addr| unsafe {
+                (addr as *mut u8).write_volatile(0)
+            });
+        //copy src to dst
+        let app_src = unsafe {
+            core::slice::from_raw_parts(
+                app_start[i] as *const u8,
+                app_start[i + 1] - app_start[i]
+            )
+        };
+        let app_dst = unsafe {
+            core::slice::from_raw_parts_mut(
+                app_base as *mut u8,
+                app_src.len()
+            )
+        };
+        app_dst.copy_from_slice(app_src);
+    }
 }

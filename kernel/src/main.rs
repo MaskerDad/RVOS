@@ -15,25 +15,14 @@
 use core::arch::global_asm;
 use log::*;
 
-/*
 #[macro_use]
 mod console;
-mod lang_items;
-mod logging;
-mod sbi;
-mod batch;
-mod sync;
-mod syscall;
-mod trap;
-*/
-
-#[macro_use]
-mod console;
-pub mod batch;
+mod loader;
 mod lang_items;
 mod logging;
 mod sbi;
 mod sync;
+mod config;
 pub mod syscall;
 pub mod trap;
 
@@ -56,9 +45,9 @@ pub fn rust_main() -> ! {
     logging::init();
     segment_info();
     
+    //core init
     trap::init();
-    batch::init();
-    batch::run_next_app();
+    panic!("Unreachable in rust_main!");
 }
 
 fn segment_info() {
