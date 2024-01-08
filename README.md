@@ -75,8 +75,8 @@ We are going to face some problems:
 Let's see what needs to be done:
 
 - [x] Ensure application isolation on physical addresses, which applications need to do before supporting virtual memory
-- [ ] Refactor the RVOS batch.rs module into two parts: loader and task
-  - [ ] loader: Loads the app into memory
+- [x] Refactor the RVOS batch.rs module into two parts: loader and task
+  - [x] loader: Loads the app into memory
   - [ ] task: For task management
     - [ ] Global task manager
     - [ ] Task scheduling mechanisms
