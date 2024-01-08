@@ -37,16 +37,22 @@ impl KernelStack {
         self.data.as_ptr() as usize + KERNEL_STACK_SIZE
     }
 
-    //TODO
-    pub fn push_context(&self, cx: TrapContext) -> &mut TrapContext {
-        let cx_ptr = (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
+    pub fn push_context(&self, cx: TrapContext) -> usize {
+        let trap_cx_ptr = (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
         unsafe {
-            *cx_ptr = cx;
+            *trap_cx_ptr = cx;
         }
-        unsafe {
-            cx_ptr.as_mut().unwrap()
-        }
+        trap_cx_ptr as usize
     }
+}
+
+pub fn init_app_cx(app_id: usize) -> usize {
+    KERNEL_STACK[app_id].push_context(
+        TrapContext::app_init_context(
+            get_app_base(app_id),
+            USER_STACK[app_id].get_sp(),
+        )
+    )
 }
 
 /** load all apps **/

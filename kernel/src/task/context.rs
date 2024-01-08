@@ -22,4 +22,15 @@ impl TaskContext {
             s: [0; 12],
         }
     }
+
+    pub fn goto_restore(kernel_sp: usize) -> Self {
+        extern "C" {
+            fn __restore();
+        }
+        Self {
+            ra: __restore as usize,
+            sp: kernel_sp,
+            s: [0; 12],
+        }
+    }
 }
