@@ -77,9 +77,9 @@ Let's see what needs to be done:
 - [x] Ensure application isolation on physical addresses, which applications need to do before supporting virtual memory
 - [x] Refactor the RVOS batch.rs module into two parts: loader and task
   - [x] loader: Loads the app into memory
-  - [ ] task: For task management
-    - [ ] Global task manager
-    - [ ] Task scheduling mechanisms
+  - [x] task: For task management
+    - [x] Global task manager
+    - [x] Task scheduling mechanisms
 
 - [ ] RVOS supports active surrender, which enables collaboration between multiple applications, thus improving the overall execution efficiency
 - [ ] RVOS supports time slice scheduling based on clock interrupts, so that each application obtains CPU usage more fairly
