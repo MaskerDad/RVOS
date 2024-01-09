@@ -81,5 +81,46 @@ Let's see what needs to be done:
     - [x] Global task manager
     - [x] Task scheduling mechanisms
 
-- [ ] RVOS supports active surrender, which enables collaboration between multiple applications, thus improving the overall execution efficiency
-- [ ] RVOS supports time slice scheduling based on clock interrupts, so that each application obtains CPU usage more fairly
+- [x] RVOS supports active surrender, which enables collaboration between multiple applications, thus improving the overall execution efficiency
+- [x] RVOS supports time slice scheduling based on clock interrupts, so that each application obtains CPU usage more fairly
+
+## AddressSpaceOS
+
+介绍：
+
+---
+
+关键数据结构：
+
+![image-20240109170430637](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401091704792.png)
+
+---
+
+RVOS内存模块初始化：
+
+![image-20240109170725879](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401091707916.png)
+
+---
+
+内核/应用地址空间切换 - `trap.S`
+
+//TODO
+
+
+
+---
+
+Let's see what needs to be done: 
+
+- [ ] 实现动态内存分配，提高了应用程序对内存的动态使用效率：使用Rust堆数据结构，使内核编程更灵活
+
+- [ ] 实现物理页帧分配器
+- [ ] 实现虚实地址、虚实页号的转换辅助函数
+- [ ] 实现页表的虚实内存映射机制。加强应用之间，应用与内核之间的内存隔离：
+  - [ ] 简化编译器对应用的地址空间设置：统一应用程序的起始地址为 `0x10000`
+  - [ ] 页表、页表项的数据结构表示以及相应方法
+  - [ ] 应用、内核地址空间的抽象以及相应方法
+
+- [ ] 重构RVOS，使原系统 `timesharing-os` 接入虚拟内存机制框架
+  - [ ] `trap handling`：实现页表切换 - trampoline
+  - [ ] `access different address-space`：实现跨越地址空间的内存访问
