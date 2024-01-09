@@ -7,14 +7,14 @@ use crate::syscall::syscall;
 use core::arch::global_asm;
 use riscv::register::{
     mtvec::TrapMode,
-    scause::{self, Exception, Trap},
+    scause::{self, Exception, Trap, Interrupt},
     stval, stvec, sie
 };
 use crate::task::{
     exit_current_and_run_next,
     suspend_current_and_run_next,
-}
-use crate::timer::ser_next_trigger;
+};
+use crate::timer::set_next_trigger;
 
 global_asm!(include_str!("trap.S"));
 

@@ -1,4 +1,4 @@
-altmacro
+.altmacro
 .macro SAVE_SN n
     sd s\n, (\n+2)*8(a0)
 .endm

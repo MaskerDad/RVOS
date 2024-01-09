@@ -25,5 +25,5 @@ pub fn shutdown(failure: bool) -> ! {
 
 /// use sbi call to set timer
 pub fn set_timer(timer: usize) {
-    sbi_rt::set_timer(timer);
+    sbi_rt::set_timer(timer as _);
 }

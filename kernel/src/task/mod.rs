@@ -2,12 +2,16 @@
 
 mod context;
 
+#[allow(clippy::module_inception)]
+mod task;
+
+use lazy_static::*;
 use crate::config::*;
 use crate::sync::UPSafeCell;
 use task::{TaskControlBlock, TaskStatus};
 use crate::loader::{
     get_num_app,
-    init_app_cx,
+    init_app_cx
 };
 use context::TaskContext;
 use crate::sbi::shutdown;
@@ -16,20 +20,20 @@ use core::arch::global_asm;
 global_asm!(include_str!("switch.S"));
 
 /** AppManager **/
-struct TaskManager {
+pub struct TaskManager {
     num_app: usize,
     inner: UPSafeCell<TaskManagerInner>,
 }
 
-struct TaskManagerInner {
+pub struct TaskManagerInner {
     current_task: usize,
     tasks: [TaskControlBlock; MAX_APP_NUM],
 }
 
 lazy_static! {
-    static ref TASK_MANAGER: TaskManager = unsafe {
+    pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
-        let tasks = [TaskControlBlock {
+        let mut tasks = [TaskControlBlock {
             task_status: TaskStatus::UnInit,
             task_cx: TaskContext::init(),
         }; MAX_APP_NUM];
@@ -63,7 +67,7 @@ extern "C" {
 impl TaskManager {
     fn run_first_task(&self) -> ! {
         let mut inner = self.inner.exclusive_access();
-        let task0 = &mut inner.task[0];
+        let task0 = &mut inner.tasks[0];
         task0.task_status = TaskStatus::Running;
         let next_task_cx_ptr = &task0.task_cx as *const TaskContext;
         drop(inner);
@@ -83,7 +87,7 @@ impl TaskManager {
     fn run_next_task(&self) {
         if let Some(next) = self.find_next_task() {
             let mut inner = self.inner.exclusive_access();
-            inner.tasks[next].task_status = TASK_STATUS::Running;
+            inner.tasks[next].task_status = TaskStatus::Running;
             let cur = inner.current_task;
             inner.current_task = next;
             
@@ -109,7 +113,7 @@ impl TaskManager {
         //     c  n
         (current + 1..current + self.num_app + 1)
             .map(|id| id % self.num_app)
-            .find(|id| inner.tasks[*id].task_status == TASK_STATUS::Ready)
+            .find(|id| inner.tasks[*id].task_status == TaskStatus::Ready)
     }
     
     fn mark_current_suspend(&self) {

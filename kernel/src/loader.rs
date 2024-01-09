@@ -56,7 +56,7 @@ pub fn init_app_cx(app_id: usize) -> usize {
 }
 
 /** load all apps **/
-fn get_num_app() -> usize {
+pub fn get_num_app() -> usize {
     extern "C" {
         fn _num_app();
     }
