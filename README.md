@@ -96,6 +96,10 @@ Let's see what needs to be done:
 
 ---
 
+SV39地址转换 (from MIT6.828)：
+
+<img src="https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401091730641.png" alt="../_images/sv39-full.png" style="zoom: 33%;" />
+
 RVOS内存模块初始化：
 
 ![image-20240109170725879](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401091707916.png)
