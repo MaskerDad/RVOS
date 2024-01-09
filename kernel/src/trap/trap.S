@@ -44,13 +44,11 @@ __alltraps:
     # set input argument of trap_handler(cx: &mut TrapContext)
     mv a0, sp
     call trap_handler
+    # back to U-Mode
 __restore:
-    # case1: start running app by run_next_app->__restore
+    # case1: start running app by run_first_task
     # case2: back to U-Mode after handling trap
-    
-    # for case1, we need to set kernel_sp
     # now sscratch->user_stack
-    mv sp, a0
     
     # restore sstatus/sepc
     ld t0, 32*8(sp)
