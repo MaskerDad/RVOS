@@ -86,81 +86,79 @@ Let's see what needs to be done:
 
 ## AddressSpaceOS
 
-到目前为止，我们完成了一个 `TimesharingOS`，从程序执行的直观演示来看还不错，这些应用程序在交替执行直到全部完成。但有以下弊端：
+So far, we have completed a `TimesharingOS`, which seems to work well from the intuitive perspective of program execution, with these applications alternating until all are completed. However, there are the following drawbacks:
 
-* 不透明
+* `Opacity`
 
-  所有应用都直接通过物理地址来访问内存，这要求开发者必须了解物理地址空间布局，应用编写起来很麻烦，需要开发者之间协商来修改链接脚本；
+  All applications access memory directly through physical addresses, which requires developers to understand the layout of the physical address space. Writing applications is troublesome and requires developers to negotiate changes to the linking script.
 
-* 不安全
+* `Insecurity`
 
-  应用可以随意访问其它应用、甚至内核的地址空间；
+  Applications can freely access the address space of other applications, even the kernel's address space.
 
-* 不灵活
+* `Inflexibility`
 
-  应用程序无法在运行时动态的使用可用物理内存。例如：一个应用程序结束后，该应用所占空间就被释放了，但这块空间无法动态地给其它正在运行的应用程序使用。
+  Applications cannot dynamically use available physical memory at runtime. For example, when an application ends, the space it occupies is released, but this space cannot be dynamically used by other running applications.
 
-因此 `AddressSpaceOS` 将提供给应用一个抽象出来的更加透明易用、也更加安全的访存接口，这就是基于分页机制的虚拟内存。
+Therefore, `AddressSpaceOS` will provide an abstract, more transparent, easy-to-use, and secure memory access interface for applications, which is a **virtual memory based on paging mechanism.**
 
-* 站在应用程序运行的角度看，就是存在一个从“0”地址开始的非常大的可读/可写/可执行的地址空间（Address Space）；
-* 站在操作系统的角度看，每个应用被局限在分配给它的物理内存空间中运行，无法读写其它应用和操作系统所在的内存空间；
+* From the perspective of running application programs:  there is a very large readable/writable/executable address space (Address Space) starting from "0" address.
+* From the perspective of the operating system:  each application is confined to run within the physical memory space allocated to it, and cannot read or write the memory space where other applications and the operating system are located.
 
 ---
 
-关键数据结构：
+***Key data structures:***
 
 ![image-20240109170430637](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401091704792.png)
 
 ---
 
-SV39地址转换 (from MIT6.828)：
+***SV39 address translation (from MIT6.828) :***
 
 <img src="https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401091730641.png" alt="../_images/sv39-full.png" style="zoom: 33%;" />
 
-RVOS内存模块初始化：
+***RVOS memory module initialization:***
 
 ![image-20240109170725879](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401091707916.png)
 
 ---
 
-应用/内核地址空间布局如下图：
+***Application/kernel address space layout:***
 
 ![image-20240111174947532](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401111749606.png)
 
 ---
 
-内核/应用地址空间切换 - `trap.S`
+***Kernel/application address space switching*** - `trap.S`
 
-> trampoline 跳板页面
+> `trampoline page`
 >
-> 接下来还需要考虑切换地址空间前后指令能否仍能连续执行。可以看到我们将 `trap.S` 中的整段汇编代码放置在 `.text.trampoline` 段，并在调整内存布局的时候将它对齐到代码段的一个页面中：
+> Next, we need to consider whether the instructions can still be executed continuously before and after switching the address space. It can be seen that we put the entire assembly code in `trap.S` into the `.text.trampoline` segment, and align it to a page of the code segment when adjusting the memory layout:
 >
-> 这样，这段汇编代码放在一个物理页帧中，且 `__alltraps` 恰好位于这个物理页帧的开头，其物理地址被外部符号 `strampoline` 标记。在开启分页模式之后，内核和应用代码都只能看到各自的虚拟地址空间，而在它们的视角中，这段汇编代码都被放在它们各自地址空间的最高虚拟页面上，由于这段汇编代码在执行的时候涉及到地址空间切换，故而被称为跳板页面。
+> In this way, this section of assembly code is placed in a physical page frame, and `__alltraps` happens to be located at the beginning of this physical page frame, and its physical address is marked by the external symbol `strampoline`. After paging is enabled, both the kernel and application code can only see their own virtual address spaces, and from their perspectives, this section of assembly code is placed on the highest virtual page of their respective address spaces. Since this section of assembly code involves address space switching when it is executed, it is called a trampoline page.
 >
-> 在产生trap前后的一小段时间内会有一个比较 **极端** 的情况，即刚产生trap时，CPU已经进入了内核态（即Supervisor Mode），但此时执行代码和访问数据还是在应用程序所处的用户态虚拟地址空间中，而不是我们通常理解的内核虚拟地址空间。在这段特殊的时间内，CPU指令为什么能够被连续执行呢？这里需要注意：无论是内核还是应用的地址空间，跳板的虚拟页均位于同样位置，且它们也将会映射到同一个实际存放这段汇编代码的物理页帧。也就是说，在执行 `__alltraps` 或 `__restore` 函数进行地址空间切换的时候，应用的用户态虚拟地址空间和操作系统内核的内核态虚拟地址空间对切换地址空间的指令所在页的映射方式均是相同的，这就说明了这段切换地址空间的指令控制流仍是可以连续执行的。
+> In a short period of time before and after the trap is generated, there will be a relatively **extreme** situation, that is, when the trap is just generated, the CPU has entered the kernel state (ie Supervisor Mode), but at this time the execution code and data access are still in the user state virtual address space where the application is located, rather than the kernel virtual address space we usually understand. During this special period of time, why can CPU instructions be executed continuously?  Here it should be noted that regardless of the address space of the kernel or the application, the virtual page of the trampoline is located in the same position, and they will also be mapped to the same physical page frame that actually stores this section of assembly code. That is to say, when executing the `__alltraps` or `__restore` function to switch the address space, the mapping methods of the application's user state virtual address space and the kernel state virtual address space of the operating system kernel to the page where the address space switching instruction is located are the same, which means that the control flow of this instruction that switches the address space can still be executed continuously.
 
-我们为何将应用的 Trap 上下文放到应用地址空间的次高页面而不是内核地址空间中的内核栈中呢？
+Why do we put the application's `TrapContext` in the second highest page of the application address space instead of the kernel stack in the kernel address space?
 
-> 原因在于，在保存 Trap 上下文到内核栈中之前，我们必须完成两项工作：
+> The reason is that before saving the Trap context to the kernel stack, we have to do two things:
 >
-> * 必须先切换到内核地址空间，这就需要将内核地址空间的 token 写入 satp 寄存器；
-> * 之后还需要保存应用的内核栈栈顶的位置，这样才能以它为基址保存 Trap 上下文。
+> - We must first switch to the kernel address space, which requires writing the kernel address space's token to the satp register;
+> - Then we also need to save the top of the application's kernel stack, so that it can be used as the base address to save the Trap context.
 >
-> 这两步需要用寄存器作为临时周转，然而我们无法在不破坏任何一个通用寄存器的情况下做到这一点。因为事实上我们需要用到内核的两条信息：内核地址空间的 token ，以及应用的内核栈栈顶的位置，RISC-V却只提供一个 `sscratch` 寄存器可用来进行周转。所以，我们不得不将 Trap 上下文保存在应用地址空间的一个虚拟页面中，而不是切换到内核地址空间去保存。
+> These two steps need to use registers as temporary buffers, but we cannot do this without destroying any of the general-purpose registers. Because in fact we need to use two pieces of information from the kernel: the kernel address space token, and the top of the application's kernel stack, but RISC-V only provides one `sscratch` register that can be used for buffering. Therefore, we have to save the Trap context in a virtual page of the application address space, instead of switching to the kernel address space to save it.
 
 ---
 
 Let's see what needs to be done: 
 
-- [ ] 实现动态内存分配，提高了应用程序对内存的动态使用效率：使用Rust堆数据结构，使内核编程更灵活
-
-- [ ] 实现物理页帧分配器
-- [ ] 实现虚实地址、虚实页号的转换辅助函数
-- [ ] 实现页表的虚实内存映射机制。加强应用之间，应用与内核之间的内存隔离：
-  - [ ] 简化编译器对应用的地址空间设置：统一应用程序的起始地址为 `0x10000`
-  - [ ] 页表、页表项的数据结构表示以及相应方法
-  - [ ] 应用、内核地址空间的抽象以及相应方法
-
-- [ ] 重构RVOS，使原系统 `timesharing-os` 接入虚拟内存机制框架
-  - [ ] `trap handling`：实现页表切换 - trampoline
-  - [ ] `access different address-space`：实现跨越地址空间的内存访问
+- [ ] Dynamic memory allocation is implemented to improve the dynamic use efficiency of memory by the application: the Rust heap data structure is used to make kernel programming more flexible.
+- [ ] Implement the physical page frame allocator.
+- [ ] The virtual and real memory mapping mechanism of page table is implemented. Enforce memory isolation between applications and between applications and the kernel:
+  - [ ] Simplify the compiler's address space Settings for the application: the uniform application starts at `0x10000`
+  - [ ] o achieve virtual and real address, virtual and real page number conversion auxiliary function
+  - [ ] Data structure representation of page tables, page table entries, and corresponding methods
+  - [ ] Application and kernel address space abstraction and corresponding methods
+- [ ] RVOS was reconstructed to make the original system `TimesharingOS` access the virtual memory mechanism framework:
+  - [ ] `trap handling`：Implement application/kernel page table switching
+  - [ ] `access different address-space`：Implement memory access across address Spaces
