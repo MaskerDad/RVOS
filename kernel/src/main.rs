@@ -30,6 +30,7 @@ pub mod syscall;
 pub mod trap;
 mod timer;
 mod task;
+mod mm;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.S"));
@@ -51,6 +52,7 @@ pub fn rust_main() -> ! {
     segment_info();
     
     //core init
+    mm::init();
     trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
