@@ -11,3 +11,6 @@ pub const APP_SIZE_LIMIT: usize = 0x20000;
 
 /* TIMER */
 pub const CLOCK_FREQ: usize = 12500000;
+
+/* memory management */
+pub const KERNEL_HEAP_SIZE: usize = 0x30_0000;
