@@ -152,7 +152,7 @@ Why do we put the application's `TrapContext` in the second highest page of the 
 
 Let's see what needs to be done: 
 
-- [ ] Dynamic memory allocation is implemented to improve the dynamic use efficiency of memory by the application: the Rust heap data structure is used to make kernel programming more flexible.
+- [x] Dynamic memory allocation is implemented to improve the dynamic use efficiency of memory by the application: the Rust heap data structure is used to make kernel programming more flexible.
 - [ ] Implement the physical page frame allocator.
 - [ ] The virtual and real memory mapping mechanism of page table is implemented. Enforce memory isolation between applications and between applications and the kernel:
   - [ ] Simplify the compiler's address space Settings for the application: the uniform application starts at `0x10000`
