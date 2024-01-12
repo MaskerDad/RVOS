@@ -31,6 +31,7 @@ pub mod trap;
 mod timer;
 mod task;
 mod mm;
+mod test;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.S"));
