@@ -140,7 +140,7 @@ impl From<PhysAddr> for PhysPageNum {
 
 impl From<PhysPageNum> for PhysAddr {
     fn from(x: PhysPageNum) -> Self {
-        Self(v.0 << PAGE_SIZE_BITS)
+        Self(x.0 << PAGE_SIZE_BITS)
     }
 }
 

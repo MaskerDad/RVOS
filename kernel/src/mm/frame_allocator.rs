@@ -1,13 +1,13 @@
 //! Physical page frame allocator: supports the automatic reclamation mechanism
 
-use super::{
+use super::address::{
     PhysAddr,
     PhysPageNum
 };
 use core::fmt::{self, Debug, Formatter};
-use alloc:vec::Vec;
+use alloc::vec::Vec;
 use lazy_static::*;
-use crate::{sync::UPSafeCell, mm::address::PhysPageNum};
+use crate::sync::UPSafeCell;
 use crate::config::MEMORY_END;
 
 /*
@@ -110,8 +110,8 @@ pub fn init_frame_allocator() {
     }
     
     FRAME_ALLOCATOR.exclusive_access().init(
-        PhysPageNum::from(ekernel as usize).ceil(),
-        PhysPageNum::from(MEMORY_END).floor()
+        PhysAddr::from(ekernel as usize).ceil(),
+        PhysAddr::from(MEMORY_END).floor()
     );
 }
 

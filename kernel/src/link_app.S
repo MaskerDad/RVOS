@@ -45,19 +45,19 @@ app_3_end:
     .global app_4_start
     .global app_4_end
 app_4_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/04yield_A.bin"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/04yield_a.bin"
 app_4_end:
 
     .section .data
     .global app_5_start
     .global app_5_end
 app_5_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/05yield_B.bin"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/05yield_b.bin"
 app_5_end:
 
     .section .data
     .global app_6_start
     .global app_6_end
 app_6_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/06yield_C.bin"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/06yield_c.bin"
 app_6_end:
