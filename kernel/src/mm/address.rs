@@ -1,7 +1,9 @@
 //! Switching between different address description modes
 //! [VA <=> PA <=> VPN <=> PPN]
 
-use core::{fmt::{self, Debug, Formatter}, simd::SimdPartialEq};
+use core::{fmt::{self, Debug, Formatter};
+use super::PageTableEntry;
+
 use crate::config::{
     PA_WIDTH_SV39,
     VA_WIDTH_SV39,
@@ -195,13 +197,42 @@ impl PhysPageNum {
     pub fn get_bytes_array(&self) -> &'static mut [u8] {
         let pa: PhysAddr = (*self).into();
         unsafe {
-            core::slice::from_raw_parts_mut(pa.0 as *mut u8, 4096)
+            core::slice::from_raw_parts_mut(
+                pa.0 as *mut u8,
+                4096
+            )
+        }
+    }
+
+    pub fn get_pte_array(&self) -> &'static mut [PageTableEntry] {
+        let pa: PhysAddr = (*self).into();
+        unsafe {
+            core::slice::from_raw_parts_mut(
+                pa.0 as *mut PageTableEntry,
+                4096 
+            )
+        }
+    }
+
+    pub fn get_mut<T>(&self) -> &'static mut T {
+        let pa: PhysAddr = (*self).into();
+        unsafe {
+            (pa.0 as *mut T).as_mut().unwrap()
         }
     }
 }
 
 impl VirtPageNum {
-    
+    //27bits
+    pub fn cut_into_three_parts(&self) -> [usize; 3] {
+        let mut vpn = self.0;
+        let mut vpn_idxs = [0usize; 3];
+        for i in (0..3).rev() {
+            vpn_idxs[i] = vpn & 511;
+            vpn >>= 9;
+        }
+        vpn_idxs
+    }
 }
 
 /* a simple range of type T */

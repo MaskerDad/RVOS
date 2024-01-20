@@ -5,6 +5,9 @@
     MemorySet: Describes the virtual address space abstraction
                of the program
  */
+use crate::config::TRAMPOLINE;
+
+use super::page_table::PTEFlags;
 use super::{
     VirtPageNum,
     VirtAddr,
@@ -80,6 +83,15 @@ impl MapArea {
             map_perm,
         }
     }
+
+    pub fn map(&mut self, page_table: &mut PageTable) {
+        
+    }
+    
+    pub fn unmap(&mut self, page_table: &mut PageTable) {
+        
+    }
+
 }
 
 //MemorySet: address space abstraction
@@ -89,5 +101,54 @@ pub struct MemorySet {
 }
 
 impl MemorySet {
+    pub fn new_bare() -> Self {
+        Self {
+            page_table: PageTable::new(),
+            areas: Vec::new(),
+        }
+    }
+
+    //return `satp` of MemorySet
+    pub fn token(&self) -> usize {
+        self.page_table.token()
+    }
+
+    //4KB [__alltraps/__restore]
+    fn map_trampoline(&mut self) {
+        self.page_table.map(
+            VirtAddr::from(TRAMPOLINE).into(),
+            PhysADDR::from(strampoline as usize).into(),
+            PTEFlags::R | PTEFlags::X
+        );
+    }
+
+    /*
+        [High-256GiB]
+        * trampoline
+        * app_x_kstack/guard_page
+        [Low-256Gib]
+        * avail_memory
+        * .bss/.data/.rodata/.text
+    */
+    pub fn new_kernel() -> Self {
+        let mut memory_set = MemorySet::new_bare();
+        
+        //map trampoline
+        memory_set.map_trampoline();
+
+        //TODO: map kernel sections
+    }
+
+    /*
+        [High-256GiB]
+        * trampoline
+        * trap_context
+        [Low-256Gib]
+        * user_stack/guard_page
+        * .bss/.data/.rodata/.text
+    */
+    pub fn from_elf(app_data: &[u8]) -> Self {
+        
+    }
     
 }

@@ -3,12 +3,13 @@
 
 use super::{
     frame_alloc, FrameTracker,
-    PhysPageNum,
+    PhysPageNum, VirtPageNum,
 };
 
 use bitflags::*;
 use alloc::vec::Vec;
 use alloc::vec;
+use riscv::paging::PageTable;
 
 //PTEFlags
 bitflags! {
@@ -44,6 +45,34 @@ impl PageTableEntry {
             bits: ppn.0 << 10 | flags.bits as usize,
         }
     }
+
+    pub fn ppn(&self) -> PhysPageNum {
+        (self.bits >> 10 & (1usize << 44) - 1).into()
+    }
+
+    pub fn flags(&self) -> PTEFlags {
+        PTEFlags::from_bits(self.bits as u8).unwrap()
+    }
+
+    pub fn empty() -> Self {
+        Self { bits: 0usize }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        (self.flags() & PTEFlags::V) != PTEFlags::empty()
+    }
+
+    pub fn readable(&self) -> bool {
+        (self.flags() & PTEFlags::R) != PTEFlags::empty()
+    }
+
+    pub fn writable(&self) -> bool {
+        (self.flags() & PTEFlags::W) != PTEFlags::empty()
+    }
+
+    pub fn executable(&self) -> bool {
+        (self.flags() & PTEFlags::X) != PTEFlags::empty()
+    }
 }
 
 /* 
@@ -62,11 +91,83 @@ pub struct PageTable {
 }
 
 impl PageTable {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let frame = frame_alloc().unwrap();
         Self {
             root_ppn: frame.ppn,
             frames: vec![frame],    
         }
+    }
+    
+    /*
+        For satp:
+        [63:60] => MODE
+            * 0 => disable MMU
+            * 8 => enable MMu
+        [59:44] => ASID
+        [43:0]  => PPN
+    */
+    pub fn token(&self) -> usize {
+        8usize << 60 | self.root_ppn.0
+    }
+
+    //real page_table walking
+    pub fn find_pte_create(&mut self, vpn: VirtPageNum)
+        -> Option<&mut PageTableEntry>
+    {
+        let vpn_idxs = vpn.cut_into_three_parts();
+        let mut ppn = self.root_ppn;
+        let mut res: Option<&mut PageTableEntry> = None;
+        for (i, vpn_idx) in vpn_idxs.iter().enumerate() {
+            let pte = &mut ppn.get_pte_array()[*vpn_idx];
+            if (i == 2) {
+                res = Some(pte);
+                break;
+            }
+            if (!pte.is_valid()) {
+                let frame_pt = frame_alloc().unwrap();
+                *pte = PageTableEntry::new(frame_pt.ppn, PTEFlags::V);
+                self.frames.push(frame_pt);
+            }
+            ppn = pte.ppn();
+        }
+        res
+    }
+
+    pub fn find_pte(&self, vpn: VirtPageNum)
+        -> Option<&mut PageTableEntry>
+    {
+        let vpn_idxs = vpn.cut_into_three_parts();
+        let ppn = self.root_ppn;
+        let mut res: Option<&mut PageTableEntry> = None;
+        for (i, vpn_idx) in vpn_idxs.iter().enumerate() {
+            let pte = &mut ppn.get_pte_array[*vpn_idx];
+            if (i == 2) {
+                res = Some(pte);
+                break;
+            }         
+            if (!pte.is_valid()) {
+                return None;
+            }
+            ppn = pte.ppn();
+        }
+        res
+    }
+
+    pub fn map(&mut self, vpn: VirtPageNum,
+                ppn: PhysPageNum, flags: PTEFlags)
+    {
+        let pte_final = self.find_pte_create(vpn).unwrap();
+        assert!(!pte_final.is_valid(), 
+                "vpn {:?} is mapped before mapping!", vpn);
+        *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
+    }
+
+    //clear final pte
+    pub fn unmap(&mut self, vpn: VirtPageNum) {
+        let pte_final = self.find_pte(vpn).unwrap();
+        assert!(pte_final.is_valid(),
+                "vpn {:?} is invalid before unmapping", vpn);
+        *pte_final = PageTableEntry::empty();
     }
 }
