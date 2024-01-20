@@ -45,6 +45,7 @@ dependencies = [
 name = "kernel"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "buddy_system_allocator",
  "lazy_static",
  "log",

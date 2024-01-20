@@ -1,7 +1,7 @@
 //! Switching between different address description modes
 //! [VA <=> PA <=> VPN <=> PPN]
 
-use core::fmt::{self, Debug, Formatter};
+use core::{fmt::{self, Debug, Formatter}, simd::SimdPartialEq};
 use crate::config::{
     PA_WIDTH_SV39,
     VA_WIDTH_SV39,
@@ -169,7 +169,26 @@ impl PhysAddr {
 }
 
 impl VirtAddr {
+    pub fn floor(&self) -> VirtPageNum {
+        VirtPageNum(self.0 / PAGE_SIZE)
+    }
     
+    pub fn ceil(&self) -> VirtPageNum {
+        /*
+            If the VA is aligned to a page,
+            the corresponding page number is taken directly,
+            otherwise it is rounded up !!!
+        */
+        if self.0 == 0 {
+            VirtPageNum(0)
+        } else {
+            VirtPageNum((self.0 + PAGE_SIZE - 1) / PAGE_SIZE)
+        }
+    }
+
+    pub fn page_offset(&self) -> usize {
+        self.0 & (PAGE_SIZE - 1)
+    }
 }
 
 impl PhysPageNum {
@@ -184,3 +203,34 @@ impl PhysPageNum {
 impl VirtPageNum {
     
 }
+
+/* a simple range of type T */
+#[derive(Copy, Clone)]
+pub struct SimpleRange<T>
+where
+    T: Copy + Debug + PartialEq + PartialOrd,
+{
+    l: T,
+    r: T,
+}
+
+impl<T> SimpleRange<T>
+where
+    T: Copy + Debug + PartialEq + PartialOrd,
+{
+    pub fn new(start: T, end: T) -> Self {
+        assert!(start <= end, "start_{:?} > end_{:?}", start, end);
+        Self { l: start, r: end }
+    }
+
+    pub fn start(&self) -> T {
+        self.l
+    }
+
+    pub fn end(&self) -> T {
+        self.r
+    }
+}
+
+pub type VPNRange = SimpleRange<VirtPageNum>;
+
