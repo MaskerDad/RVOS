@@ -8,7 +8,8 @@ mod page_table;
 
 use crate::test::mm_test::{
     heap_test, 
-    frame_allocator_test
+    frame_allocator_test,
+    remap_test,
 };
 
 pub use address::{
@@ -20,10 +21,15 @@ pub use frame_allocator::{
     frame_alloc,
     FrameTracker
 };
-
 pub use page_table::{
     PageTable,
-    PageTableEntry,  
+    PageTableEntry,
+    PTEFlags,  
+};
+pub use memory_set::{
+    MemorySet,
+    MapPermission,
+    KERNEL_SPACE,
 };
 
 pub fn init() {
@@ -36,4 +42,6 @@ pub fn init() {
     frame_allocator_test();
 
     //KERNEL_SPACE init
+    KERNEL_SPACE.exclusive_access().activate();
+    remap_test();
 }

@@ -30,11 +30,17 @@ use super::{
 use super::{
     PageTable,
 };
+use crate::sync::UPSafeCell;
 
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
+use alloc::sync::Arc;
+use lazy_static::*;
+use core::arch::asm;
+use riscv::register::satp;
 
- extern "C" {
+
+extern "C" {
     fn stext();
     fn etext();
     fn srodata();
@@ -45,18 +51,16 @@ use alloc::vec::Vec;
     fn ebss();
     fn ekernel();
     fn strampoline();
- }
+}
 
-/*
-    MapArea: logical segment
-    * ErCore specifies that each logical segment
-      is mapped in the same way and with the same permissions
-*/
-pub struct MapArea {
-    vpn_range: VPNRange,
-    data_frames: BTreeMap<VirtPageNum, FrameTracker>,
-    map_type: MapType,
-    map_perm: MapPermission,
+/* kernel address space init */
+lazy_static! {
+    pub static ref KERNEL_SPACE: Arc<UPSafeCell<MemorySet>> =
+        Arc::new(
+            unsafe {
+                UPSafeCell::new(MemorySet::new_kernel())
+            }
+        );
 }
 
 pub enum MapType {
@@ -71,6 +75,18 @@ bitflags! {
         const X = 1 << 3;
         const U = 1 << 4;
     }
+}
+
+/*
+    MapArea: logical segment
+    * ErCore specifies that each logical segment
+      is mapped in the same way and with the same permissions
+*/
+pub struct MapArea {
+    vpn_range: VPNRange,
+    data_frames: BTreeMap<VirtPageNum, FrameTracker>,
+    map_type: MapType,
+    map_perm: MapPermission,
 }
 
 impl MapArea {
@@ -177,6 +193,15 @@ impl MemorySet {
         self.page_table.token()
     }
 
+    //enable MMU
+    pub fn activate(&self) {
+        let satp = self.page_table.token();
+        unsafe {
+            satp::write(satp);
+            asm!("sfence.vma");
+        }
+    }
+
     //install MapArea
     fn install_area(&mut self, mut area: MapArea, data: Option<&[u8]>) {
         area.map(&mut self.page_table);
@@ -202,6 +227,10 @@ impl MemorySet {
         [Low-256Gib]
         * avail_memory
         * .text/.rodata/.data/.bss
+
+        Note: The application kernel stack should not be allocated
+        when rCore initializes the memory module, it is normally
+        allocated when a new TaskControlBlock is created.
     */
     pub fn new_kernel() -> Self {
         let mut memory_set = MemorySet::new_bare();
@@ -286,8 +315,82 @@ impl MemorySet {
         [Low-256Gib]
         * user_stack/guard_page
         * .bss/.data/.rodata/.text
+
+        Return (memory_set, user_stack_top, elf.entry_point)
     */
-    pub fn from_elf(app_data: &[u8]) -> Self {
+    pub fn from_elf(app_data: &[u8]) -> (Self, usize, usize) {
+        let memory_set = MemorySet::new_bare();
         
+        //map trampoline
+        memory_set.map_trampoline();
+
+        //map trap_context
+        let area_trap_ctx = MapArea::new(
+            TRAP_CONTEXT.into(),
+            TRAMPOLINE.into(),
+            MapType::Framed,
+            MapPermission::R | MapPermission::W,
+        );
+        
+        //map the {.text/.rodata/.data/.bss} of application by ELF headers
+        //need to carry U flag
+        let elf = xmas_elf::ElfFile::new(elf_data).unwrap();
+        let elf_header = elf.header;
+        let magic = elf_header.pt1.magic;
+        assert_eq!(magic, [0x7f, 0x45, 0x4c, 0x46], "invalid elf!");
+        let ph_count = elf_header.pt2.ph_count();
+        let mut max_end_vpn = VirtPageNum(0);
+        for i in 0..ph_count {
+            let ph = elf.program_header(i).unwrap();
+            if ph.get_type().unwrap() == xmas_elf::program::Type::Load {
+                let start_va: VirtAddr = (ph.virtual_addr() as usize).into();
+                let end_va: VirtAddr = ((ph.virtual_addr() + ph.mem_size()) as usize).into();
+                let mut map_perm = MapPermission::U;
+                let ph_flags = ph.flags();
+                if ph_flags.is_read() {
+                    map_perm |= MapPermission::R;
+                }
+                if ph_flags.is_write() {
+                    map_perm |= MapPermission::W;
+                }
+                if ph_flags.is_execute() {
+                    map_perm |= MapPermission::X;
+                }
+                let map_area = MapArea::new(start_va, end_va, MapType::Framed, map_perm);
+                max_end_vpn = map_area.vpn_range.end();
+                memory_set.install_area(
+                    map_area,
+                    Some(&elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize]),
+                );
+            }
+        }
+        
+        //map user stack and guard page
+        let max_end_va: VirtAddr = max_end_vpn.into();
+        let mut user_stack_bottom: usize = max_end_va.into();
+        user_stack_bottom += PAGE_SIZE;
+        let user_stack_top = user_stack_bottom + USER_STACK_SIZE;
+        let area_stack = MapArea::new(
+            user_stack_bottom.into(),
+            user_stack_top.into(),
+            MapType::Framed,
+            MapPermission::R | MapPermission::W | MapPermission::U,
+        );
+        memory_set.install_area(area_stack, None);
+
+        //used in `sbrk`
+        let area_sbrk = MapArea::new(
+            user_stack_top.into(),
+            user_stack_top.into(),
+            MapType::Framed,
+            MapPermission::R | MapPermission::W | MapPermission::U,
+        );
+        memory_set.install_area(area_sbrk, None);
+        
+        (
+            memory_set,
+            user_stack_top,
+            elf.header.pt2.entry_point() as usize,
+        )
     }
 }
