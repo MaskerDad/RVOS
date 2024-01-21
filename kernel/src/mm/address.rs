@@ -239,7 +239,7 @@ impl VirtPageNum {
 #[derive(Copy, Clone)]
 pub struct SimpleRange<T>
 where
-    T: Copy + Debug + PartialEq + PartialOrd,
+    T: StepByOne + Copy + Debug + PartialEq + PartialOrd,
 {
     l: T,
     r: T,
@@ -247,7 +247,7 @@ where
 
 impl<T> SimpleRange<T>
 where
-    T: Copy + Debug + PartialEq + PartialOrd,
+    T: StepByOne + Copy + Debug + PartialEq + PartialOrd,
 {
     pub fn new(start: T, end: T) -> Self {
         assert!(start <= end, "start_{:?} > end_{:?}", start, end);
@@ -263,5 +263,65 @@ where
     }
 }
 
-pub type VPNRange = SimpleRange<VirtPageNum>;
+/* Into Iterator */
+impl<T> IntoIterator for SimpleRange<T>
+where
+    T: StepByOne + Copy + Debug + PartialEq + PartialOrd,
+{
+    type Item = T;
+    type IntoIter = SimpleRangeIterator<T>;
+    fn into_iter(self) -> Self::IntoIter {
+        SimpleRangeIterator::new(self.l, self.r)
+    }
+}
 
+/*
+    We need to implement the iterator trait for SimpleRange
+    because we will need to traverse SimpleRange in the future.
+    For example, visit all virtual pages of [start_vpn, end_vpn)
+    and try to create a mapping for them.
+*/
+pub struct SimpleRangeIterator<T>
+where
+    T: StepByOne + Copy + Debug + PartialEq + PartialOrd,
+{
+    current: T,
+    end: T,
+}
+
+impl<T> SimpleRangeIterator<T>
+where
+    T: StepByOne + Copy + Debug + PartialEq + PartialOrd,
+{
+    pub fn new(l: T, r: T) -> Self {
+        Self { current: l, end: r }
+    }
+}
+
+impl<T> Iterator for SimpleRangeIterator<T> 
+where
+    T: StepByOne + Copy + Debug + PartialEq + PartialOrd,
+{
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current = self.end {
+            None
+        } else {
+            let tmp = self.current;
+            self.current.step();
+            Some(tmp)   
+        }
+    }
+}
+
+pub trait StepByOne {
+    fn step(&mut self);
+}
+
+impl StepByOne for VirtPageNum {
+    fn step(&mut self) {
+        self.0 += 1;
+    }
+}
+
+pub type VPNRange = SimpleRange<VirtPageNum>;

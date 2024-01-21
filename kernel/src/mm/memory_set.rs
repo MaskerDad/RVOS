@@ -84,14 +84,51 @@ impl MapArea {
         }
     }
 
+    /*
+        A mapping is established for a page according to the mapping
+        method corresponding to the logical section.All pages within
+        the same logical segment are mapped in the same way.
+
+        [MapType::Identical]
+        To ensure that cpu memory access to the kernel is consistent
+        before and after MMU is enabled, we need to establish an identity
+        map for the kernel address space (except for TRAMPOLINE).
+        [MapType::Framed]
+        The virtual page number is dynamically mapped onto a physical page
+        frame by means of the physical page frame allocator, which is typically
+        used to apply address Spaces.
+    */
+    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+        let mut ppn: PhysPageNum;
+        match self.map_type {
+            MapType::Identical => {
+                ppn = PhysPageNum(vpn.0);
+            }
+            MapType::Framed => {
+                let frame = frame_alloc().unwrap();
+                ppn = frame.ppn;
+                self.data_frames.insert(vpn, frame);
+            }
+        }
+        let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
+        page_table.map(vpn, ppn, pte_flags);
+    }
+
+    //Establish mappings for multiple virtual pages of a logical segment
     pub fn map(&mut self, page_table: &mut PageTable) {
-        
+        //Iterators are implemented for vpn_range
+        for vpn in self.vpn_range {
+            self.map_one(page_table, vpn);
+        }
     }
     
-    pub fn unmap(&mut self, page_table: &mut PageTable) {
+    pub fn unmap_one(&mut self, page_table: &mut PageTable) {
         
     }
 
+    pub fn unmap(&mut self, page_table: &mut PageTable) {
+        
+    }
 }
 
 //MemorySet: address space abstraction
@@ -113,6 +150,15 @@ impl MemorySet {
         self.page_table.token()
     }
 
+    //install MapArea
+    fn install_area(&mut self, mut area: MapArea, data: Option<&[u8]>) {
+        area.map(&mut self.page_table);
+        if let Some(data) = data {
+            //area.copy_data(&mut self.page_table, data);
+        }
+        self.areas.push(area);
+    }
+
     //4KB [__alltraps/__restore]
     fn map_trampoline(&mut self) {
         self.page_table.map(
@@ -128,7 +174,7 @@ impl MemorySet {
         * app_x_kstack/guard_page
         [Low-256Gib]
         * avail_memory
-        * .bss/.data/.rodata/.text
+        * .text/.rodata/.data/.bss
     */
     pub fn new_kernel() -> Self {
         let mut memory_set = MemorySet::new_bare();
@@ -136,7 +182,29 @@ impl MemorySet {
         //map trampoline
         memory_set.map_trampoline();
 
-        //TODO: map kernel sections
+        //map kernel sections
+        println!("[new_kernel] .text: [{:#x}, {:#x})", 
+                stext as usize, etext as usize);
+        println!("[new_kernel] .rodata: [{:#x}, {:#x})", 
+                srodata as usize, erodata as usize);
+        println!("[new_kernel] .data: [{:#x}, {:#x})", 
+                sdata as usize, edata as usize);
+        println!("[new_kernel] .bss: [{:#x}, {:#x})", 
+                sbss as usize, ebss as usize);
+        
+        println!("[new_kernel] mapping .text section");
+        let area_text = MapArea::new(
+            (stext as usize).into(),
+            (etext as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::X,  
+        );
+        //memory_set.install_area(area_text, None);
+
+        println!("[new_kernel] mapping .rodata section");
+        println!("[new_kernel] mapping .data section");
+        println!("[new_kernel] mapping .bss section");
+
     }
 
     /*
