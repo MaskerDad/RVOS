@@ -170,4 +170,10 @@ impl PageTable {
                 "vpn {:?} is invalid before unmapping", vpn);
         *pte_final = PageTableEntry::empty();
     }
+
+    //return page_table_entry by vpn
+    pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry>
+    {
+        self.find_pte(vpn).map(|pte| *pte)
+    }
 }

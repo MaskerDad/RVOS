@@ -5,8 +5,14 @@
     MemorySet: Describes the virtual address space abstraction
                of the program
  */
-use crate::config::TRAMPOLINE;
-
+use crate::config::{
+    TRAMPOLINE,
+    PAGE_SIZE,
+    MEMORY_END,
+    MMIO,
+    TRAP_CONTEXT,
+    USER_STACK_SIZE,
+};
 use super::page_table::PTEFlags;
 use super::{
     VirtPageNum,
@@ -129,6 +135,27 @@ impl MapArea {
     pub fn unmap(&mut self, page_table: &mut PageTable) {
         
     }
+    
+    pub fn copy_data(&mut self, page_table: &mut PageTable, data: &[u8]) {
+        assert_eq!(self.map_type, MapType::Framed);
+        let mut start: usize = 0;
+        let mut current_vpn = self.vpn_range.start();
+        let len = data.len();
+        loop {
+            let src = &data[start..len.min(start + PAGE_SIZE)];
+            let dst = page_table
+                .translate(current_vpn)
+                .unwrap()
+                .ppn()
+                .get_bytes_array()[..src.len()];
+            dst.copy_from_slice(src);
+            start += PAGE_SIZE;
+            if start >= len {
+                break;
+            }
+            current_vpn.step();
+        }
+    }
 }
 
 //MemorySet: address space abstraction
@@ -154,7 +181,7 @@ impl MemorySet {
     fn install_area(&mut self, mut area: MapArea, data: Option<&[u8]>) {
         area.map(&mut self.page_table);
         if let Some(data) = data {
-            //area.copy_data(&mut self.page_table, data);
+            area.copy_data(&mut self.page_table, data);
         }
         self.areas.push(area);
     }
@@ -199,12 +226,57 @@ impl MemorySet {
             MapType::Identical,
             MapPermission::R | MapPermission::X,  
         );
-        //memory_set.install_area(area_text, None);
+        memory_set.install_area(area_text, None);
 
         println!("[new_kernel] mapping .rodata section");
-        println!("[new_kernel] mapping .data section");
-        println!("[new_kernel] mapping .bss section");
+        let area_rodata = MapArea::new(
+            (srodata as usize).into(),
+            (erodata as usize).into(),
+            MapType::Identical,
+            MapPermission::R,  
+        );
+        memory_set.install_area(area_rodata, None);
 
+        println!("[new_kernel] mapping .data section");
+        let area_data = MapArea::new(
+            (sdata as usize).into(),
+            (edata as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W,  
+        );
+        memory_set.install_area(area_data, None);
+        
+        println!("[new_kernel] mapping .bss section");
+        let area_bss = MapArea::new(
+            (sbss as usize).into(),
+            (ebss as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W,  
+        );
+        memory_set.install_area(area_rodata, None);
+
+        println!("[new_kernel] mapping avail physical memory");
+        let area_apm = MapArea::new(
+            (ekernel as usize).into(),
+            (MEMORY_END as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W,  
+        );
+        memory_set.install_area(area_apm, None);
+
+        println!("[new_kernel] mapping MMIO memory");
+        for mmio in MMIO {
+            let area_mmio = map_one::new(
+                ((*mmio).0 as usize).into(),
+                (((*mmio).0 + (*mmio).1) as usize).into(),
+                MapType::Identical,
+                MapPermission::R | MapPermission::W  
+            );
+            memory_set.install_area(area_mmio, None);
+        }
+        
+        //All logical sections of the kernel have been installed
+        memory_set
     }
 
     /*
@@ -218,5 +290,4 @@ impl MemorySet {
     pub fn from_elf(app_data: &[u8]) -> Self {
         
     }
-    
 }
