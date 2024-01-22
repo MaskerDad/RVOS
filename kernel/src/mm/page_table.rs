@@ -176,4 +176,45 @@ impl PageTable {
     {
         self.find_pte(vpn).map(|pte| *pte)
     }
+
+    /*
+        temporarily used to get arguments from user space,
+        currently used for `translated_byte_buffer`.
+    */
+    pub fn from_token(satp: usize) -> Self {
+        Self {
+            root_ppn: PhysPageNum::from(satp & ((1usize << 44) - 1)),
+            frames: Vec::new(),
+        }
+    }
 }
+
+//translate a user_buffer_ptr to a mutable u8 Vec through page table
+pub fn translated_byte_buffer(satp: usize, ubuf_ptr: *const u8, len: usize)
+    -> Vec<&'static mut [u8]>
+{
+    //a temporarily page_table object
+    let page_table = PageTable::from(satp);
+    
+    let mut start = ubuf_ptr as usize;
+    let end = start + len;
+
+    let mut v = Vec::new();
+    while start < end {
+        let start_va = VirtAddr::from(start);
+        let start_vpn = start_va.floor();
+        
+        let ppn = page_table.translate(start_vpn).unwrap().ppn();
+        start_vpn.step();
+        let mut end_va: VirtAddr = start_vpn.into();
+        end_va = end_va.min(VirtAddr::from(end));
+        if end_va.page_offset() == 0 {
+            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
+        } else {
+            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
+        }
+        start = end_va.into();
+    }
+    v
+}
+
