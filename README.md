@@ -164,5 +164,7 @@ Let's see what needs to be done:
   - [x] `tcb` Refactoring the process control block, PCB should manage the address space
   - [x] `task_manager` Refactoring TASK_MANAGER to support address-space-os
   - [x] `trap_return` Extend the 'trap_return' handling before returning to userspace.Previously we just jumped to '__restore' after handling an exception or before running the app. In fact, the kernel should do some other work like switching address space before actually returning to userspace
-  - [x] `trap handling`：Implement application/kernel page table switching
-  - [ ] `access different address-space`：Implement memory access across address Spaces
+  - [x] `trap handling`: Implement application/kernel page table switching
+-[ ] sys_write no longer has direct access to data in application space, and manual lookup of the page table is required to retrieve the physical page frame for the user-mode buffer.
+  - [ ] `translated_byte_buffer`: This function converts a buffer of the application address space into a form directly accessible to the kernel address space.
+  - [ ] `sys_write`

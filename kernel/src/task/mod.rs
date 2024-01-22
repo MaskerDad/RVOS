@@ -1,5 +1,4 @@
 //! Task management
-
 mod context;
 
 #[allow(clippy::module_inception)]

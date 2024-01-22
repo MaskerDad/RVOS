@@ -52,15 +52,19 @@ pub fn rust_main() -> ! {
     logging::init();
     segment_info();
     
-    //core init
+    //mm init
     mm::init();
+
+    //trap:{timer interrupt} init
     trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
+    
+    //task run
     loader::load_apps();
     task::run_first_task();
 
-    panic!("Unreachable in rust_main!");
+    panic!("[kernel] Unreachable in rust_main!");
 }
 
 fn segment_info() {

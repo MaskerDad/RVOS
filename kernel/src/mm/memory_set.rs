@@ -84,6 +84,11 @@ bitflags! {
 */
 pub struct MapArea {
     vpn_range: VPNRange,
+    /*
+        Only the physical page frames allocated by frame_allocater
+        need to be maintained(MapType::Framed), all other mapping
+        methods can find the ppn via vpn.
+    */
     data_frames: BTreeMap<VirtPageNum, FrameTracker>,
     map_type: MapType,
     map_perm: MapPermission,
@@ -144,12 +149,19 @@ impl MapArea {
         }
     }
     
-    pub fn unmap_one(&mut self, page_table: &mut PageTable) {
-        
+    #[allow(unused)]
+    pub fn unmap_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+        let self.map_type == MapType::Framed {
+            self.data_frames.remove(vpn);
+        }
+        page_table.unmap(vpn);
     }
 
+    #[allow(unused)]
     pub fn unmap(&mut self, page_table: &mut PageTable) {
-        
+        for vpn in self.vpn_range {
+            self.unmap_one(page_table, vpn);
+        }
     }
     
     pub fn copy_data(&mut self, page_table: &mut PageTable, data: &[u8]) {
