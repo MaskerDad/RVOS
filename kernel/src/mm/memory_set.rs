@@ -202,6 +202,17 @@ impl MemorySet {
         }
     }
 
+    //install MapType::Framed area
+    pub install_framed_area(&mut self, start_va: VirtAddr, 
+                            end_va: VirtAddr, map_perm: MapPermission)
+    {
+        let area_kstack = MapArea::new(
+            start_va, end_va,
+            MapType::Framed, map_perm  
+        );
+        self.install_area(area_kstack, None);
+    }
+
     //install MapArea
     fn install_area(&mut self, mut area: MapArea, data: Option<&[u8]>) {
         area.map(&mut self.page_table);

@@ -1,4 +1,5 @@
 //! Implementation of [TaskContext]
+use crate::trap::trap_return;
 
 /* 
     callee saved:
@@ -15,7 +16,7 @@ pub struct TaskContext {
 }
 
 impl TaskContext {
-    pub fn init() -> Self {
+    pub fn zero_init() -> Self {
         Self {
             ra: 0,
             sp: 0,
@@ -23,13 +24,11 @@ impl TaskContext {
         }
     }
 
-    pub fn goto_restore(kernel_sp: usize) -> Self {
-        extern "C" {
-            fn __restore();
-        }
+    //The initial context in which the task first runs
+    pub fn goto_trap_return(kstack_ptr: usize) -> Self {
         Self {
-            ra: __restore as usize,
-            sp: kernel_sp,
+            ra: trap_return as usize,
+            sp: kstack_ptr,
             s: [0; 12],
         }
     }

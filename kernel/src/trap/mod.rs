@@ -66,3 +66,8 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     }
     cx
 }
+
+#[no_mangle]
+pub fn trap_return() -> {
+    
+}
