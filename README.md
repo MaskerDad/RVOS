@@ -161,8 +161,8 @@ Let's see what needs to be done:
   - [x] Application and kernel address space abstraction and corresponding methods
 - [ ] RVOS was reconstructed to make the original system `TimesharingOS` access the virtual memory mechanism framework:
   - [x] `loader`: Now we can load all apps to the same virtual address '0x10000'
-  - [ ] `tcb` Refactoring the process control block, PCB should manage the address space
-  - [ ] `task_manager` Refactoring TASK_MANAGER to support address-space-os
-  - [ ] `trap_return` Extend the 'trap_return' handling before returning to userspace.Previously we just jumped to '__restore' after handling an exception or before running the app. In fact, the kernel should do some other work like switching address space before actually returning to userspace
-  - [ ] `trap handling`：Implement application/kernel page table switching
+  - [x] `tcb` Refactoring the process control block, PCB should manage the address space
+  - [x] `task_manager` Refactoring TASK_MANAGER to support address-space-os
+  - [x] `trap_return` Extend the 'trap_return' handling before returning to userspace.Previously we just jumped to '__restore' after handling an exception or before running the app. In fact, the kernel should do some other work like switching address space before actually returning to userspace
+  - [x] `trap handling`：Implement application/kernel page table switching
   - [ ] `access different address-space`：Implement memory access across address Spaces

@@ -20,6 +20,11 @@ pub struct TrapContext {
     pub x: [usize; 32],
     pub sstatus: Sstatus,
     pub sepc: usize,
+
+    //these fields are immutable
+    pub kernel_satp: usize,
+    pub kernel_sp: usize,
+    pub trap_handler: usize,
 }
 
 impl TrapContext {
@@ -28,15 +33,24 @@ impl TrapContext {
     }
 
     /// generate a init trap_context, for first app back to user
-    pub fn app_init_context(entry: usize, sp: usize) -> Self {
+    pub fn app_init_context(
+        entry: usize,
+        user_sp: usize,
+        kernel_sp: usize,
+        kernel_satp: usize,
+        trap_handler: usize,
+    ) -> Self {
         let mut sstatus = sstatus::read();
         sstatus.set_spp(SPP::User);
-        let mut cx = Self {
+        let mut trap_context = Self {
             x: [0; 32],
             sstatus,
             sepc: entry,
+            kernel_sp,
+            kernel_satp,
+            trap_handler,
         };
-        cx.set_sp(sp);
-        cx
+        trap_context.set_sp(user_sp);
+        trap_context
     }
 }

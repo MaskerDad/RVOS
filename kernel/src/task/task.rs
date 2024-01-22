@@ -9,6 +9,7 @@ use crate::config::{
     kernel_stack_position,
     TRAP_CONTEXT,
 };
+use crate::trap::trap_handler;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
@@ -29,7 +30,6 @@ pub struct TaskControlBlock {
 impl TaskControlBlock {
     pub fn new(elf_data: &[u8], app_id: usize) -> Self {
         let (memory_set, user_sp, entry_point) = MemorySet::from_self(elf_data);
-        let task_status = TaskStatus::Ready;
 
         //install the map_area of kernel stack
         let (kstack_bottom, kstack_top) = kernel_stack_position(app_id);
@@ -38,28 +38,44 @@ impl TaskControlBlock {
             kstack_top.into(),
             MapPermission::R | MapPermission::W,
         );
+
+        let task_status = TaskStatus::Ready;    
+        //constructing the task context
+        let task_cx = TaskContext::goto_trap_return(kstack_top);
         
         //get trap_cx_ppn
-
-
+        let trap_cx_ppn = memory_set
+            .translate(VirtAddr::from(TRAP_CONTEXT))
+            .unwrap()
+            .ppn();
         
-        //TODO: constructing the task context
-        let task_cx = TaskContext::goto_trap_return(kstack_top);
-
-
-
-        le task_control_block = Self {
+        //createing TCB
+        let task_control_block = Self {
             task_status,
             task_cx,
             memory_set,
+            trap_cx_ppn,
             base_size: user_sp,
         };
 
         //initialize the trap_context of the first running task
+        let trap_cx = task_control_block.get_trap_cx();
+        *trap_cx = TrapContext::app_init_context(
+            entry_point,
+            user_sp,
+            kernel_satp: KERNEL_SPACE.exclusive_access().token(),
+            kernel_sp: kstack_top,
+            trap_handler as usize,
+        );
         
-
         task_control_block
     }
+
+    pub fn get_trap_cx(&self) -> &'static mut TrapContext {
+        self.trap_cx_ppn.get_mut()
+    }
+
+    pub fn get_user_token(&self) -> usize {
+        self.memory_set.token()
+    }
 }
-
-

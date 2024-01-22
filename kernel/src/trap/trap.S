@@ -11,10 +11,7 @@
     .align 2
 __alltraps:
     csrrw sp, sscratch, sp
-    # now sp->kerne_stack, sscratch->user_stack
-    
-    # allocate a TrapContext on kernel_stack
-    addi sp, sp, -34*8
+    # now sp->*TrapContext in user space, sscratch->user stack
     
     # save g-regs
     # skip zero(x0)
@@ -28,9 +25,7 @@ __alltraps:
         .set n, n + 1
     .endr
 
-    # please feel free to use them
-    # t0/t1/t2 were saved on kerne_stack
-    # sstatus/sepc is important for trap_return
+    # we can use t0/t1/t2 freely, because they have been saved in TrapContext
     csrr t0, sstatus
     csrr t1, sepc
     sd t0, 32*8(sp)
@@ -40,28 +35,34 @@ __alltraps:
     csrr t2, sscratch
     sd t2, 2*8(sp)
     
-    # next, we're going to call trap_handler
-    # set input argument of trap_handler(cx: &mut TrapContext)
-    mv a0, sp
-    call trap_handler
+    # next, we're going to switch root page_table(t0) and jump to trap_handler(t1)
+    # note: In rCore TrapContext is stored in a fixed page, separate from the kernel stack
+    ld t0, 34*8(sp)
+    ld t1, 36*8(sp)
+    ld sp, 35*8(sp)
+    csrw satp, t0
+    sfence.vma
+    jr t1
 
 __restore:
-    # case1: start running app by run_next_app->__restore
-    # case2: back to U-Mode after handling trap
+    # a0: *TrapContext in user space(Constant)
+    # a1: user space token
+
+    # switch root page_table
+    csrw satp, a1
+    sfence.vma
     
-    # for case1, we need to set kernel_sp
-    # now sscratch->user_stack
-    mv sp, a0
-    
+    # TrapContext is saved in the sscratch
+    csrw sscratch, a0
+
+    mv sp, a0    
     # restore sstatus/sepc
     ld t0, 32*8(sp)
     ld t1, 33*8(sp)
-    ld t2, 2*8(sp)
     csrw sstatus, t0
     csrw sepc, t1
-    csrw sscratch, t2
 
-    # restore g-regs except sp/tp
+    # restore g-regs except x0/sp/tp
     ld x1, 1*8(sp)
     ld x3, 3*8(sp)
     .set n, 5
@@ -70,9 +71,6 @@ __restore:
         .set n, n+1
     .endr
 
-    # release TrapContext on kernel_stack
-    addi sp, sp, 34*8
-    
-    # now sp->kernel_stack, sscratch->user_stack
-    csrrw sp, sscratch, sp
+    # bbbbbback to user!!!
+    ld sp, 2*8(sp)
     sret

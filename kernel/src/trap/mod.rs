@@ -11,21 +11,18 @@ use riscv::register::{
     stval, stvec, sie
 };
 use crate::task::{
+    current_trap_cx,
+    current_user_token,
     exit_current_and_run_next,
     suspend_current_and_run_next,
 };
 use crate::timer::set_next_trigger;
+sue crate::config::{
+    TRAMPOLINE,
+    TRAP_CONTEXT,
+};
 
 global_asm!(include_str!("trap.S"));
-
-pub fn init() {
-    extern "C" {
-        fn __alltraps();
-    }
-    unsafe {
-        stvec::write(__alltraps as usize, TrapMode::Direct);
-    }
-}
 
 pub fn enable_timer_interrupt() {
     unsafe {
@@ -33,18 +30,48 @@ pub fn enable_timer_interrupt() {
     }
 }
 
+fn set_user_trap_entry() {
+    unsafe {
+        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
+    }
+}
+
+//initialize CSR `stvec` as the entry of `__alltraps`
+pub fn init() {
+    set_kernel_trap_entry();
+}
+
+fn set_kernel_trap_entry() {
+    unsafe {
+        stvec::write(trap_from_kernel as usize, TrapMode::Direct)
+    };
+}
+
+#[no_mangle]
+// Unimplement: traps/interrupts/exceptions from kernel mode
+// TODO: after I/O device supported
+fn trap_from_kernel() -> ! {
+    panic!("Not supported by RVOS: a trap from kernel!")
+}
+
 #[no_mangle]
 pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
+    //set `stvec` for RVOS with S-Mode
+    set_kernel_trap_entry();
+       
+    let trap_cx = current_trap_cx();
     let scause = scause::read();
     let stval = stval::read();
-    
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
             // the length of `ecall` is 4 byte
             cx.sepc += 4;
             cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
         }
-        Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
+        Trap::Exception(Exception::StoreFault)
+        | Trap::Exception(Exception::StorePageFault)
+        | Trap::Exception(Exception::LoadFault)
+        | Trap::Exception(Exception::LoadPageFault) => {
             println!("[kernel] PageFault in application, kernel killed it.");
             exit_current_and_run_next();    
         }
@@ -64,10 +91,38 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             );
         }
     }
-    cx
+    trap_return();
 }
 
 #[no_mangle]
 pub fn trap_return() -> {
+    set_user_trap_entry();
     
+    let trap_cx_ptr: usize = TRAP_CONTEXT;
+    let user_satp = current_user_token();
+    
+    /*
+        We set stvec to the TRAMPOLINE address of the springboard page shared
+        between the kernel and the application address space instead of the
+        __alltraps address seen by the compiler when linking.
+        
+        This is because when paging mode is enabled, the kernel can only actually
+        retrieve the __alltraps and __restore assembler code from virtual addresses
+        on the TRAMPOLINE page.
+    */
+    extern "C" {
+        fn __alltraps();
+        fn __restore();
+    }
+    let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
+    unsafe {
+        asm!(
+            "fence.i",
+            "jr {restore_va}",                 // jump to new addr of __restore asm function
+            restore_va = in(reg) restore_va,
+            in("a0") trap_cx_ptr,              // a0 = va of Trap Context
+            in("a1") user_satp,                // a1 = pa of usr page table
+            options(noreturn)
+        );
+    }
 }
