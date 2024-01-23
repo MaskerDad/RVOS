@@ -1,11 +1,11 @@
 //! Task management
 mod context;
+mod switch;
 
 #[allow(clippy::module_inception)]
 mod task;
 
 use lazy_static::*;
-use crate::config::*;
 use crate::sync::UPSafeCell;
 use task::{TaskControlBlock, TaskStatus};
 use crate::loader::{
@@ -16,6 +16,8 @@ use context::TaskContext;
 use crate::sbi::shutdown;
 use core::arch::global_asm;
 use alloc::vec::Vec;
+use switch::__switch;
+use crate::trap::TrapContext;
 
 global_asm!(include_str!("switch.S"));
 
@@ -32,7 +34,7 @@ pub struct TaskManagerInner {
 
 lazy_static! {
     pub static ref TASK_MANAGER: TaskManager = {
-        println!("[kernel] initialize TASK_MANAGER")
+        println!("[kernel] initialize TASK_MANAGER");
         let num_app = get_num_app();
         println!("[kernel] num_app = {}", num_app);
         
@@ -129,7 +131,7 @@ impl TaskManager {
 
     //get [&mut TrapContext] of current task by trap_cx_ppn
     fn get_current_trap_cx(&self) -> &'static mut TrapContext {
-        let inner = self.inner.exclusive_access()
+        let inner = self.inner.exclusive_access();
         inner.tasks[inner.current_task].get_trap_cx()
     }
 }

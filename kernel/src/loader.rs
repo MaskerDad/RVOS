@@ -6,7 +6,7 @@
     determines which physical page frames the data of these apps are
     actually loaded on when the virtual address space is created.
 */
-pub fn get_num_app() -> usize() {
+pub fn get_num_app() -> usize {
     extern "C" {
         fn _num_app();
     }

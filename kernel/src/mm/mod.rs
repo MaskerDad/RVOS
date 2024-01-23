@@ -15,7 +15,7 @@ use crate::test::mm_test::{
 pub use address::{
     PhysAddr, PhysPageNum,
     VirtAddr, VirtPageNum,
-    VPNRange,
+    VPNRange, StepByOne,
 };
 pub use frame_allocator::{
     frame_alloc,
@@ -24,7 +24,8 @@ pub use frame_allocator::{
 pub use page_table::{
     PageTable,
     PageTableEntry,
-    PTEFlags,  
+    PTEFlags,
+    translated_byte_buffer,
 };
 pub use memory_set::{
     MemorySet,

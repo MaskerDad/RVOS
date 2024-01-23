@@ -1,7 +1,7 @@
 //! Switching between different address description modes
 //! [VA <=> PA <=> VPN <=> PPN]
 
-use core::{fmt::{self, Debug, Formatter};
+use core::fmt::{self, Debug, Formatter};
 use super::PageTableEntry;
 
 use crate::config::{
@@ -146,6 +146,18 @@ impl From<PhysPageNum> for PhysAddr {
     }
 }
 
+impl From<VirtAddr> for VirtPageNum {
+    fn from(v: VirtAddr) -> Self {
+        assert_eq!(v.page_offset(), 0);
+        v.floor()
+    }
+}
+
+impl From<VirtPageNum> for VirtAddr {
+    fn from(v: VirtPageNum) -> Self {
+        Self(v.0 << PAGE_SIZE_BITS)
+    }    
+}
 
 impl PhysAddr {
     pub fn floor(&self) -> PhysPageNum {
@@ -304,7 +316,7 @@ where
 {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current = self.end {
+        if self.current == self.end {
             None
         } else {
             let tmp = self.current;

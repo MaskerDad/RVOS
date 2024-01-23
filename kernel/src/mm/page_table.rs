@@ -4,12 +4,12 @@
 use super::{
     frame_alloc, FrameTracker,
     PhysPageNum, VirtPageNum,
+    VirtAddr, StepByOne,
 };
 
 use bitflags::*;
 use alloc::vec::Vec;
 use alloc::vec;
-use riscv::paging::PageTable;
 
 //PTEFlags
 bitflags! {
@@ -34,6 +34,7 @@ bitflags! {
     [9:8]:   RSW
     [7:0]:   D_A_G_U_X_W_R_V
 */
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct PageTableEntry {
     pub bits: usize,
@@ -120,11 +121,11 @@ impl PageTable {
         let mut res: Option<&mut PageTableEntry> = None;
         for (i, vpn_idx) in vpn_idxs.iter().enumerate() {
             let pte = &mut ppn.get_pte_array()[*vpn_idx];
-            if (i == 2) {
+            if i == 2 {
                 res = Some(pte);
                 break;
             }
-            if (!pte.is_valid()) {
+            if !pte.is_valid() {
                 let frame_pt = frame_alloc().unwrap();
                 *pte = PageTableEntry::new(frame_pt.ppn, PTEFlags::V);
                 self.frames.push(frame_pt);
@@ -138,15 +139,15 @@ impl PageTable {
         -> Option<&mut PageTableEntry>
     {
         let vpn_idxs = vpn.cut_into_three_parts();
-        let ppn = self.root_ppn;
+        let mut ppn = self.root_ppn;
         let mut res: Option<&mut PageTableEntry> = None;
         for (i, vpn_idx) in vpn_idxs.iter().enumerate() {
-            let pte = &mut ppn.get_pte_array[*vpn_idx];
-            if (i == 2) {
+            let pte = &mut ppn.get_pte_array()[*vpn_idx];
+            if i == 2 {
                 res = Some(pte);
                 break;
             }         
-            if (!pte.is_valid()) {
+            if !pte.is_valid() {
                 return None;
             }
             ppn = pte.ppn();
@@ -160,7 +161,7 @@ impl PageTable {
         let pte_final = self.find_pte_create(vpn).unwrap();
         assert!(!pte_final.is_valid(), 
                 "vpn {:?} is mapped before mapping!", vpn);
-        *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
+        *pte_final = PageTableEntry::new(ppn, flags | PTEFlags::V);
     }
 
     //clear final pte
@@ -194,7 +195,7 @@ pub fn translated_byte_buffer(satp: usize, ubuf_ptr: *const u8, len: usize)
     -> Vec<&'static mut [u8]>
 {
     //a temporarily page_table object
-    let page_table = PageTable::from(satp);
+    let page_table = PageTable::from_token(satp);
     
     let mut start = ubuf_ptr as usize;
     let end = start + len;
@@ -202,7 +203,7 @@ pub fn translated_byte_buffer(satp: usize, ubuf_ptr: *const u8, len: usize)
     let mut v = Vec::new();
     while start < end {
         let start_va = VirtAddr::from(start);
-        let start_vpn = start_va.floor();
+        let mut start_vpn = start_va.floor();
         
         let ppn = page_table.translate(start_vpn).unwrap().ppn();
         start_vpn.step();

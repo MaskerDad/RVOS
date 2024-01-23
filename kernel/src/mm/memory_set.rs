@@ -13,7 +13,6 @@ use crate::config::{
     TRAP_CONTEXT,
     USER_STACK_SIZE,
 };
-use super::page_table::PTEFlags;
 use super::{
     VirtPageNum,
     VirtAddr,
@@ -25,10 +24,12 @@ use super::{
     FrameTracker,  
 };
 use super::{
-    VPNRange,
+    PageTable,
+    PageTableEntry,
+    PTEFlags,
 };
 use super::{
-    PageTable,
+    StepByOne, VPNRange  
 };
 use crate::sync::UPSafeCell;
 
@@ -39,7 +40,6 @@ use lazy_static::*;
 use core::arch::asm;
 use riscv::register::satp;
 
-
 extern "C" {
     fn stext();
     fn etext();
@@ -47,7 +47,7 @@ extern "C" {
     fn erodata();
     fn sdata();
     fn edata();
-    fn sbss_with_stack();
+    fn sbss();
     fn ebss();
     fn ekernel();
     fn strampoline();
@@ -63,6 +63,7 @@ lazy_static! {
         );
 }
 
+#[derive(PartialEq, Debug)]
 pub enum MapType {
     Identical,
     Framed,
@@ -126,7 +127,7 @@ impl MapArea {
         used to apply address Spaces.
     */
     pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
-        let mut ppn: PhysPageNum;
+        let ppn: PhysPageNum;
         match self.map_type {
             MapType::Identical => {
                 ppn = PhysPageNum(vpn.0);
@@ -151,8 +152,8 @@ impl MapArea {
     
     #[allow(unused)]
     pub fn unmap_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
-        let self.map_type == MapType::Framed {
-            self.data_frames.remove(vpn);
+        if self.map_type == MapType::Framed {
+            self.data_frames.remove(&vpn);
         }
         page_table.unmap(vpn);
     }
@@ -171,7 +172,7 @@ impl MapArea {
         let len = data.len();
         loop {
             let src = &data[start..len.min(start + PAGE_SIZE)];
-            let dst = page_table
+            let dst = &mut page_table
                 .translate(current_vpn)
                 .unwrap()
                 .ppn()
@@ -188,7 +189,7 @@ impl MapArea {
 
 //MemorySet: address space abstraction
 pub struct MemorySet {
-    page_table: PageTable,
+    pub page_table: PageTable,
     areas: Vec<MapArea>,
 }
 
@@ -208,14 +209,20 @@ impl MemorySet {
     //enable MMU
     pub fn activate(&self) {
         let satp = self.page_table.token();
+        println!("[kernel] before write satp");
         unsafe {
             satp::write(satp);
             asm!("sfence.vma");
         }
+        println!("[kernel] after write satp");
+    }
+
+    pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
+        self.page_table.translate(vpn)
     }
 
     //install MapType::Framed area
-    pub install_framed_area(&mut self, start_va: VirtAddr, 
+    pub fn install_framed_area(&mut self, start_va: VirtAddr, 
                             end_va: VirtAddr, map_perm: MapPermission)
     {
         let area_kstack = MapArea::new(
@@ -238,7 +245,7 @@ impl MemorySet {
     fn map_trampoline(&mut self) {
         self.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
-            PhysADDR::from(strampoline as usize).into(),
+            PhysAddr::from(strampoline as usize).into(),
             PTEFlags::R | PTEFlags::X
         );
     }
@@ -305,7 +312,7 @@ impl MemorySet {
             MapType::Identical,
             MapPermission::R | MapPermission::W,  
         );
-        memory_set.install_area(area_rodata, None);
+        memory_set.install_area(area_bss, None);
 
         println!("[new_kernel] mapping avail physical memory");
         let area_apm = MapArea::new(
@@ -318,7 +325,7 @@ impl MemorySet {
 
         println!("[new_kernel] mapping MMIO memory");
         for mmio in MMIO {
-            let area_mmio = map_one::new(
+            let area_mmio = MapArea::new(
                 ((*mmio).0 as usize).into(),
                 (((*mmio).0 + (*mmio).1) as usize).into(),
                 MapType::Identical,
@@ -326,7 +333,7 @@ impl MemorySet {
             );
             memory_set.install_area(area_mmio, None);
         }
-        
+
         //All logical sections of the kernel have been installed
         memory_set
     }
@@ -341,8 +348,8 @@ impl MemorySet {
 
         Return (memory_set, user_stack_top, elf.entry_point)
     */
-    pub fn from_elf(app_data: &[u8]) -> (Self, usize, usize) {
-        let memory_set = MemorySet::new_bare();
+    pub fn from_elf(elf_data: &[u8]) -> (Self, usize, usize) {
+        let mut memory_set = MemorySet::new_bare();
         
         //map trampoline
         memory_set.map_trampoline();
@@ -354,6 +361,7 @@ impl MemorySet {
             MapType::Framed,
             MapPermission::R | MapPermission::W,
         );
+        memory_set.install_area(area_trap_ctx, None);
         
         //map the {.text/.rodata/.data/.bss} of application by ELF headers
         //need to carry U flag

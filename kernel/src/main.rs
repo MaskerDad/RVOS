@@ -14,6 +14,8 @@
 #![feature(alloc_error_handler)]
 
 extern crate alloc;
+#[macro_use]
+extern crate bitflags;
 
 use core::arch::global_asm;
 use log::*;
@@ -61,7 +63,6 @@ pub fn rust_main() -> ! {
     timer::set_next_trigger();
     
     //task run
-    loader::load_apps();
     task::run_first_task();
 
     panic!("[kernel] Unreachable in rust_main!");

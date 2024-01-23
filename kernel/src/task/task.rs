@@ -1,15 +1,20 @@
 //! The unit of task management:[TaskControlBlock]
 use super::context::TaskContext;
-use crate::mm::{
-    MemorySet,
-    KERNEL_SPACE,
-    MapPermission,
-};
 use crate::config::{
     kernel_stack_position,
     TRAP_CONTEXT,
 };
-use crate::trap::trap_handler;
+use crate::trap::{
+    TrapContext,
+    trap_handler,
+};
+use crate::mm::{
+    VirtAddr,
+    PhysPageNum,
+    MemorySet,
+    MapPermission,
+    KERNEL_SPACE,
+};
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
@@ -18,7 +23,6 @@ pub enum TaskStatus {
     Exited,
 }
 
-#[derive(Copy, Clone)]
 pub struct TaskControlBlock {
     pub task_status: TaskStatus,
     pub task_cx: TaskContext,
@@ -29,7 +33,7 @@ pub struct TaskControlBlock {
 
 impl TaskControlBlock {
     pub fn new(elf_data: &[u8], app_id: usize) -> Self {
-        let (memory_set, user_sp, entry_point) = MemorySet::from_self(elf_data);
+        let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
 
         //install the map_area of kernel stack
         let (kstack_bottom, kstack_top) = kernel_stack_position(app_id);
@@ -45,7 +49,7 @@ impl TaskControlBlock {
         
         //get trap_cx_ppn
         let trap_cx_ppn = memory_set
-            .translate(VirtAddr::from(TRAP_CONTEXT))
+            .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
         
@@ -63,8 +67,8 @@ impl TaskControlBlock {
         *trap_cx = TrapContext::app_init_context(
             entry_point,
             user_sp,
-            kernel_satp: KERNEL_SPACE.exclusive_access().token(),
-            kernel_sp: kstack_top,
+            KERNEL_SPACE.exclusive_access().token(),
+            kstack_top,
             trap_handler as usize,
         );
         

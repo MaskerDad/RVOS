@@ -1,10 +1,9 @@
 //! Trap Control and Handling
-
 mod context;
 pub use context::TrapContext;
 
 use crate::syscall::syscall;
-use core::arch::global_asm;
+use core::arch::{asm, global_asm};
 use riscv::register::{
     mtvec::TrapMode,
     scause::{self, Exception, Trap, Interrupt},
@@ -17,7 +16,7 @@ use crate::task::{
     suspend_current_and_run_next,
 };
 use crate::timer::set_next_trigger;
-sue crate::config::{
+use crate::config::{
     TRAMPOLINE,
     TRAP_CONTEXT,
 };
@@ -51,11 +50,11 @@ fn set_kernel_trap_entry() {
 // Unimplement: traps/interrupts/exceptions from kernel mode
 // TODO: after I/O device supported
 fn trap_from_kernel() -> ! {
-    panic!("Not supported by RVOS: a trap from kernel!")
+    panic!("Not supported by RVOS: a trap from kernel!");
 }
 
 #[no_mangle]
-pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
+pub fn trap_handler() -> ! {
     //set `stvec` for RVOS with S-Mode
     set_kernel_trap_entry();
        
@@ -65,8 +64,8 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
             // the length of `ecall` is 4 byte
-            cx.sepc += 4;
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
+            trap_cx.sepc += 4;
+            trap_cx.x[10] = syscall(trap_cx.x[17], [trap_cx.x[10], trap_cx.x[11], trap_cx.x[12]]) as usize;
         }
         Trap::Exception(Exception::StoreFault)
         | Trap::Exception(Exception::StorePageFault)
@@ -95,7 +94,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 }
 
 #[no_mangle]
-pub fn trap_return() -> {
+pub fn trap_return() -> ! {
     set_user_trap_entry();
     
     let trap_cx_ptr: usize = TRAP_CONTEXT;
