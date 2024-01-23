@@ -47,7 +47,7 @@ extern "C" {
     fn erodata();
     fn sdata();
     fn edata();
-    fn sbss();
+    fn sbss_with_stack();
     fn ebss();
     fn ekernel();
     fn strampoline();
@@ -209,12 +209,10 @@ impl MemorySet {
     //enable MMU
     pub fn activate(&self) {
         let satp = self.page_table.token();
-        println!("[kernel] before write satp");
         unsafe {
             satp::write(satp);
             asm!("sfence.vma");
         }
-        println!("[kernel] after write satp");
     }
 
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
@@ -276,7 +274,7 @@ impl MemorySet {
         println!("[new_kernel] .data: [{:#x}, {:#x})", 
                 sdata as usize, edata as usize);
         println!("[new_kernel] .bss: [{:#x}, {:#x})", 
-                sbss as usize, ebss as usize);
+                sbss_with_stack as usize, ebss as usize);
         
         println!("[new_kernel] mapping .text section");
         let area_text = MapArea::new(
@@ -307,7 +305,7 @@ impl MemorySet {
         
         println!("[new_kernel] mapping .bss section");
         let area_bss = MapArea::new(
-            (sbss as usize).into(),
+            (sbss_with_stack as usize).into(),
             (ebss as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W,  
