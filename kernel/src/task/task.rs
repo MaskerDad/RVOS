@@ -33,6 +33,7 @@ pub struct TaskControlBlock {
 
 impl TaskControlBlock {
     pub fn new(elf_data: &[u8], app_id: usize) -> Self {
+        println!("TCB::new");
         let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
 
         //install the map_area of kernel stack
