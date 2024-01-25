@@ -159,12 +159,87 @@ Let's see what needs to be done:
   - [x] o achieve virtual and real address, virtual and real page number conversion auxiliary function
   - [x] Data structure representation of page tables, page table entries, and corresponding methods
   - [x] Application and kernel address space abstraction and corresponding methods
-- [ ] RVOS was reconstructed to make the original system `TimesharingOS` access the virtual memory mechanism framework:
+- [x] RVOS was reconstructed to make the original system `TimesharingOS` access the virtual memory mechanism framework:
   - [x] `loader`: Now we can load all apps to the same virtual address '0x10000'
   - [x] `tcb` Refactoring the process control block, PCB should manage the address space
   - [x] `task_manager` Refactoring TASK_MANAGER to support address-space-os
   - [x] `trap_return` Extend the 'trap_return' handling before returning to userspace.Previously we just jumped to '__restore' after handling an exception or before running the app. In fact, the kernel should do some other work like switching address space before actually returning to userspace
   - [x] `trap handling`: Implement application/kernel page table switching
--[x] sys_write no longer has direct access to data in application space, and manual lookup of the page table is required to retrieve the physical page frame for the user-mode buffer.
+  -[x] sys_write no longer has direct access to data in application space, and manual lookup of the page table is required to retrieve the physical page frame for the user-mode buffer.
   - [x] `translated_byte_buffer`: This function converts a buffer of the application address space into a form directly accessible to the kernel address space.
   - [x] `sys_write`
+
+---
+
+## ProcessOS
+
+* 介绍
+  * `ProcessOS` 对  `AssressSpaceOS` 的升级
+    * 将 `任务` 进一步扩展为真正意义上的 `进程`，进程相对于任务在运行过程中拥有以下能力：
+      * `sys_fork` 创建子进程 
+      * `sys_exec` 用新的应用内容覆盖当前进程，即达到执行新应用的目的
+      * `sys_waitpid` 等待子进程结束并回收子进程资源
+    * 拥有一个用户终端程序或称 **命令行** 应用（Command Line Application, 俗称 **shell** ），形成用户与操作系统进行交互的命令行界面
+
+* 核心设计（`drawio`）
+
+  * 进程结构分析
+  * 进程管理框架
+
+* (StpeByStep) Let's see what needs to be done: 
+
+  * 用户层
+
+    * 增加系统调用
+      * RVOS进程模型的三个核心系统调用：`fork/exec/waitpid`
+      * 查看进程PID的系统调用 `getpid`
+      * 允许应用程序获取用户键盘输入的 `read` 系统调用
+    * 一组新的应用程序
+      * 运行在U-Mode下，但和内核深度绑定的特殊应用程序：
+        * 用户初始程序 `initproc.rs` ：会被内核 "唯一/自动/最早" 加载并执行
+        * shell 程序 `user_shell.rs` ：从键盘接收用户输入的应用名并执行对应的应用
+      * 一系列普通测试程序
+
+  * 内核层
+
+    * 进程管理核心数据结构
+
+      * 为了支持基于应用名而不是应用 ID 来查找应用 ELF 可执行文件，从而实现灵活的应用加载
+        * 在 `os/build.rs` 以及 `os/src/loader.rs` 中更新了 `link_app.S` 的格式使得它包含每个应用的名字
+        * 提供 `get_app_data_by_name` 接口获取应用的 ELF 数据
+      * 任务管理器 `TaskManager` 功能解耦：
+        * `Processor` 负责管理 CPU 上执行的任务和一些其他信息；
+        * 任务管理器 `TaskManager` 仅负责管理所有任务;
+      * 升级 `TaskControlBlock` 
+        * 新增 PID 、内核栈、应用数据大小、父子进程、退出码等信息；
+        * 进程的 PID 将作为查找进程控制块的索引；
+        * 面向进程控制块提供相应的资源自动回收机制；
+
+    * 进程管理机制
+
+      - 初始进程的创建
+
+        在内核初始化时调用 `add_initproc` 函数，其读取并解析初始应用 `initproc` 的 ELF 文件数据并创建初始进程 `INITPROC` ，随后会将它加入到全局任务管理器 `TASK_MANAGER` 中参与调度；
+
+      - 进程切换机制
+
+        新增 `schedule` 函数进行进程切换，它会首先切换到处理器的 idle 控制流 `Processor::run` ，然后选取要切换到的进程并切换过去；
+
+      - 进程调度机制
+
+        `TaskManager::fetch_task` 在进程切换时选取一个进程并切换过去；
+
+      - 进程生成机制
+
+        增加内核对`fork/exec` 两个系统调用的支持，它们基于 `TaskControlBlock::fork/exec`；
+
+      - 进程资源回收机制
+
+        * 当一个进程主动退出或出错退出的时候，在 `exit_current_and_run_next` 中会立即回收一部分资源并在进程控制块中保存退出码；
+        * 父进程通过 `waitpid` 系统调用捕获到子进程退出码之后，它的进程控制块才会被回收，从而该进程的所有资源都被彻底回收；
+
+      - 进程的 I/O 输入机制：
+
+        支持用户终端程序 `user_shell` 读取用户键盘输入的功能，还需要实现 `read` 系统调用。
+
+      
