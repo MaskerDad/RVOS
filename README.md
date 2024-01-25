@@ -173,6 +173,8 @@ Let's see what needs to be done:
 
 ## ProcessOS
 
+> 这个东西是什么？做什么的？为什么(存在的意义)？
+
 * 介绍
   * `ProcessOS` 对  `AssressSpaceOS` 的升级
     * 将 `任务` 进一步扩展为真正意义上的 `进程`，进程相对于任务在运行过程中拥有以下能力：
@@ -184,8 +186,23 @@ Let's see what needs to be done:
 * 核心设计（`drawio`）
 
   * 进程结构分析
+    * 进程标识符 `PidHandle`：RAII => Drop => 回收pid
+    * 内核栈 `KernelStack`：RAII => Drop => 回收物理页帧 (删除逻辑段)
+    * 进程控制块 `TCB/TCBInner`：初始化后不变/变化
+    * 进程管理器 `TaskManager`：仅负责管理所有任务
+    * 处理器管理 `Processor`：维护CPU正在执行的任务
   * 进程管理框架
+    * //TODO
 
+* 你能回答这些问题吗？
+
+  * AddressSpaceOS中的任务和进程的异同？
+
+  * 关于 `KernelStack` 的设计，为什么就没有 `UserStack`？
+    * 内核栈位于内核地址空间，需要通过 `Drop` 专门完成回收工作；
+  
+    * 用户栈位于应用地址空间，资源在进程退出时回收；
+  
 * (StpeByStep) Let's see what needs to be done: 
 
   * 用户层
