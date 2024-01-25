@@ -50,7 +50,7 @@ app_3_end:
     .global app_4_end
     .align 3
 app_4_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/04yield_a"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/04load_fault"
 app_4_end:
 
     .section .data
@@ -58,7 +58,7 @@ app_4_end:
     .global app_5_end
     .align 3
 app_5_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/05yield_b"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/05store_fault"
 app_5_end:
 
     .section .data
@@ -66,5 +66,5 @@ app_5_end:
     .global app_6_end
     .align 3
 app_6_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/06yield_c"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/sbrk_test"
 app_6_end:

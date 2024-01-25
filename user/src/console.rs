@@ -2,6 +2,7 @@ use super::write;
 use core::fmt::{self, Write};
 
 struct Stdout;
+
 const STDOUT: usize = 1;
 
 impl Write for Stdout {

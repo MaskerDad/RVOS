@@ -1,18 +1,19 @@
 # Building
 TARGET := riscv64gc-unknown-none-elf
 MODE := release
-KERNEL_ELF := target/$(TARGET)/$(MODE)/kernel
+KERNEL_ELF := target/$(TARGET)/$(MODE)/rvos
 KERNEL_BIN := $(KERNEL_ELF).bin
-
-# Building mode argument
-ifeq ($(MODE), release)
-	MODE_ARG := --release
-endif
+DISASM_TMP := target/$(TARGET)/$(MODE)/asm
 
 # BOARD
 BOARD := qemu
 SBI ?= rustsbi
 BOOTLOADER := ../bootloader/$(SBI)-$(BOARD).bin
+
+# Building mode argument
+ifeq ($(MODE), release)
+	MODE_ARG := --release
+endif
 
 # KERNEL ENTRY
 KERNEL_ENTRY_PA := 0x80200000
@@ -35,11 +36,12 @@ $(KERNEL_BIN): kernel
 kernel:
 	@cd ../user && make build
 	@echo Platform: $(BOARD)
+	@cp src/linker-$(BOARD).ld src/linker.ld
 	@cargo build $(MODE_ARG)
+	@rm src/linker.ld
 
 clean:
 	@cargo clean
-	@cd ../user && make clean
 
 run: run-inner
 
@@ -63,4 +65,4 @@ gdbserver: build
 gdbclient:
 	@riscv64-unknown-elf-gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
 
-.PHONY: build env kernel clean run-inner
+.PHONY: build env kernel clean disasm disasm-vim run-inner gdbserver gdbclient

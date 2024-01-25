@@ -1,56 +1,48 @@
+//! Implementation of [`TrapContext`]
+
 use riscv::register::sstatus::{self, Sstatus, SPP};
 
-/*
-    riscv register alias:
-    x0            zero
-    x1            ra
-    x2            sp
-    x3            gp
-    x4            tp
-    x5-x7         t0-t2
-    x8            s0/fp
-    x9            s1
-    x10-x11       a0-a1(function args/return values)
-    x12-x17       a2-a7(function args)
-    x18-x27       s2-s11
-    x28-x31       t3-t6
-*/
 #[repr(C)]
+/// trap context structure containing sstatus, sepc and registers
 pub struct TrapContext {
+    /// general regs[0..31]
     pub x: [usize; 32],
+    /// CSR sstatus      
     pub sstatus: Sstatus,
+    /// CSR sepc
     pub sepc: usize,
-
-    //these fields are immutable
+    /// Addr of Page Table
     pub kernel_satp: usize,
+    /// kernel stack
     pub kernel_sp: usize,
+    /// Addr of trap_handler function
     pub trap_handler: usize,
 }
 
 impl TrapContext {
+    /// set stack pointer to x_2 reg (sp)
     pub fn set_sp(&mut self, sp: usize) {
         self.x[2] = sp;
     }
-
-    /// generate a init trap_context, for first app back to user
+    /// init app context
     pub fn app_init_context(
         entry: usize,
-        user_sp: usize,
-        kernel_sp: usize,
+        sp: usize,
         kernel_satp: usize,
+        kernel_sp: usize,
         trap_handler: usize,
     ) -> Self {
-        let mut sstatus = sstatus::read();
-        sstatus.set_spp(SPP::User);
-        let mut trap_context = Self {
+        let mut sstatus = sstatus::read(); // CSR sstatus
+        sstatus.set_spp(SPP::User); //previous privilege mode: user mode
+        let mut cx = Self {
             x: [0; 32],
             sstatus,
-            sepc: entry,
-            kernel_sp,
-            kernel_satp,
-            trap_handler,
+            sepc: entry,  // entry point of app
+            kernel_satp,  // addr of page table
+            kernel_sp,    // kernel stack
+            trap_handler, // addr of trap_handler function
         };
-        trap_context.set_sp(user_sp);
-        trap_context
+        cx.set_sp(sp); // app's user stack pointer
+        cx // return initial Trap Context of app
     }
 }
