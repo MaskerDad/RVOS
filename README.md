@@ -165,7 +165,7 @@ Let's see what needs to be done:
   - [x] `task_manager` Refactoring TASK_MANAGER to support address-space-os
   - [x] `trap_return` Extend the 'trap_return' handling before returning to userspace.Previously we just jumped to '__restore' after handling an exception or before running the app. In fact, the kernel should do some other work like switching address space before actually returning to userspace
   - [x] `trap handling`: Implement application/kernel page table switching
-  -[x] sys_write no longer has direct access to data in application space, and manual lookup of the page table is required to retrieve the physical page frame for the user-mode buffer.
+  - [x] sys_write no longer has direct access to data in application space, and manual lookup of the page table is required to retrieve the physical page frame for the user-mode buffer.
   - [x] `translated_byte_buffer`: This function converts a buffer of the application address space into a form directly accessible to the kernel address space.
   - [x] `sys_write`
 
@@ -183,6 +183,8 @@ Let's see what needs to be done:
       * `sys_waitpid` 等待子进程结束并回收子进程资源
     * 拥有一个用户终端程序或称 **命令行** 应用（Command Line Application, 俗称 **shell** ），形成用户与操作系统进行交互的命令行界面
 
+---
+
 * 核心设计（`drawio`）
 
   * 进程结构分析
@@ -191,18 +193,45 @@ Let's see what needs to be done:
     * 进程控制块 `TCB/TCBInner`：初始化后不变/变化
     * 进程管理器 `TaskManager`：仅负责管理所有任务
     * 处理器管理 `Processor`：维护CPU正在执行的任务
+    
+    ![](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401261328817.png)
+    
   * 进程管理框架
-    * //TODO
+    * `fork/exec/waitpid` => 创建/覆盖/清理
+    
+    ![](https://cdn.jsdelivr.net/gh/MaskerDad/BlogImage@main/202401261329157.png)
+
+---
 
 * 你能回答这些问题吗？
 
-  * AddressSpaceOS中的任务和进程的异同？
-
-  * 关于 `KernelStack` 的设计，为什么就没有 `UserStack`？
+  * **AddressSpaceOS中的任务和进程的异同？**
+  * **关于 `KernelStack` 的设计，为什么就没有 `UserStack`？**
     * 内核栈位于内核地址空间，需要通过 `Drop` 专门完成回收工作；
-  
+
     * 用户栈位于应用地址空间，资源在进程退出时回收；
-  
+  * **`fork/exec/waitpid` 存在的意义？**
+    * 之前的设计都是由内核本身来管理进程，这并不合理。内核本质上是为用户提供服务的，因此应该暴露一些接口让用户拥有必要的进程控制权，这些权利通常有以下：
+      * 用户可以选择某一个进程执行：
+        * `sys_fork`：在用户态可以动态创建进程，而不是内核一开始就将 `TCB` 全部创建好；
+        * `sys_exec`：通过 `sys_fork` 创建出来的只是进程的骨架/空壳，需要将具体且不同的应用程序内容填充进去，或者说覆盖掉；
+      * 内核给提供了用户创建进程的能力，也必须同时提供回收进程资源的能力，让用户完全自行管理自身所创建的进程：
+        * `sys_waitpid`：父进程彻底回收子进程资源
+  * **对于进程资源清理工作，子进程会调用 `exit_current_and_run_next` 首先完成一部分，然后再由用户父进程主动调用 `waitpid` 进行彻底回收，为什么要这么解耦设计？**
+    * `exit_current_and_run_next` 回收哪些内容？
+      * 用户地址空间回收：存放进程数据和代码的物理页帧被回收
+      * 存放页表的那些物理页帧此时还不会被回收，为什么？
+    * `waitpid` 回收哪些内容？=> 子进程 `TaskControlBlock`
+      * 内核栈 `KernelStack`
+      * PID `PidHandle`
+      * 存放用户页表的那些物理页帧 `MapArea::data_frames: BTreeMap<VirtPageNum, FrameTracker>`
+    * **回答：**当一个进程通过 `exit` 系统调用退出之后，它所占用的资源并不能够立即全部回收。比如该进程的内核栈目前就正用来进行系统调用处理，如果将放置它的物理页帧回收的话，可能会导致系统调用不能正常处理。对于这种问题，一种典型的做法是当进程退出的时候内核立即回收一部分资源并将该进程标记为 **僵尸进程** (Zombie Process) 。之后，由该进程的父进程通过一个名为 `waitpid` 的系统调用来收集该进程的返回状态并回收掉它所占据的全部资源，这样这个进程才被彻底销毁。
+  * 为什么从原执行流中分离出一个 `idle_task_cx` 执行流，这么设计有什么好处？
+    * `Processor` 有一个不同的 idle 控制流，它运行在这个 CPU 核的启动栈上，功能是尝试从任务管理器中选出一个任务来在当前 CPU 核上执行。在内核初始化完毕之后，会通过调用 `run_tasks` 函数来进入 idle 控制流；
+    * 这样做的主要目的是使得换入/换出进程和调度执行流在内核层各自执行在不同的内核栈上，分别是进程自身的内核栈和内核初始化时使用的启动栈。这样的话，调度相关的数据不会出现在进程内核栈上，也使得调度机制对于换出进程的Trap执行流是不可见的，它在决定换出的时候只需调用schedule而无需操心调度的事情。从而各执行流的分工更加明确了，虽然带来了更大的开销。
+
+---
+
 * (StpeByStep) Let's see what needs to be done: 
 
   * 用户层
