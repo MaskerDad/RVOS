@@ -1,10 +1,15 @@
 use core::arch::asm;
 
+const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_GET_TIME: usize = 169;
 const SYSCALL_SBRK: usize = 214;
+const SYSCALL_GETPID: usize = 172;
+const SYSCALL_FORK: usize = 220;
+const SYSCALL_EXEC: usize = 221;
+const SYSCALL_WAITPID: usize = 260;
 
 fn syscall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;
@@ -20,8 +25,18 @@ fn syscall(id: usize, args: [usize; 3]) -> isize {
     ret
 }
 
+pub fn syscall_read(fd: usize, buffer: &mut [u8]) -> isize {
+    syscall(
+        SYSCALL_READ, 
+        [fd, buffer.as_mut_ptr() as usize, buffer.len()]
+    )
+}
+
 pub fn sys_write(fd: usize, buffer: &[u8]) -> isize {
-    syscall(SYSCALL_WRITE, [fd, buffer.as_ptr() as usize, buffer.len()])
+    syscall(
+        SYSCALL_WRITE,
+        [fd, buffer.as_ptr() as usize, buffer.len()]
+    )
 }
 
 pub fn sys_exit(exit_code: i32) -> isize {
@@ -38,4 +53,38 @@ pub fn sys_get_time() -> isize {
 
 pub fn sys_sbrk(size: i32) -> isize {
     syscall(SYSCALL_SBRK, [size as usize, 0, 0])
+}
+
+pub fn sys_getpid() -> isize {
+    syscall(SYSCALL_GETPID, [0, 0, 0])
+}
+
+/* process management */
+/*
+    params:  none 
+    return:  0/pid
+*/
+pub fn sys_fork() -> usize {
+    syscall(SYSCALL_FORK, [0, 0, 0])
+}
+
+/*
+    params:  app_name
+    return:  noreturn/-1
+*/
+pub fn sys_exec(path: &str) -> isize {
+    syscall(SYSCALL_EXEC, [path as usize, 0, 0])
+}
+
+/*
+    params:  
+            pid => pid/-1
+            exit_code => child_return_value_ptr
+    return:
+            pid
+            not existed => -1
+            not finished => -2
+*/
+pub fn sys_waitpid(pid: isize, exit_code: *mut i32) -> isize {
+    syscall(SYSCALL_WAITPID, [pid as usize, exit_code as usize, 0])
 }

@@ -185,7 +185,7 @@ Let's see what needs to be done:
 
 ---
 
-* 核心设计（`drawio`）
+* 核心设计
 
   * 进程结构分析
     * 进程标识符 `PidHandle`：RAII => Drop => 回收pid
@@ -232,60 +232,72 @@ Let's see what needs to be done:
 
 ---
 
-* (StpeByStep) Let's see what needs to be done: 
+> (StpeByStep) Let's see what needs to be done: 
 
-  * 用户层
+- [ ] 用户层
 
-    * 增加系统调用
-      * RVOS进程模型的三个核心系统调用：`fork/exec/waitpid`
-      * 查看进程PID的系统调用 `getpid`
-      * 允许应用程序获取用户键盘输入的 `read` 系统调用
-    * 一组新的应用程序
-      * 运行在U-Mode下，但和内核深度绑定的特殊应用程序：
-        * 用户初始程序 `initproc.rs` ：会被内核 "唯一/自动/最早" 加载并执行
-        * shell 程序 `user_shell.rs` ：从键盘接收用户输入的应用名并执行对应的应用
-      * 一系列普通测试程序
+  - [x] 增加系统调用
+    - [x] RVOS进程模型的三个核心系统调用：`fork/exec/waitpid`
+    - [x] 查看进程PID的系统调用 `getpid`
+    - [x] 允许应用程序获取用户键盘输入的 `read` 系统调用
 
-  * 内核层
+  - [ ] 一组新的应用程序
 
-    * 进程管理核心数据结构
+    - [x] 运行在U-Mode下，但和内核深度绑定的特殊应用程序：
+      - [x] 用户初始程序 `initproc.rs` ：会被内核 "唯一/自动/最早" 加载并执行
+      - [x] shell 程序 `user_shell.rs` ：从键盘接收用户输入的应用名并执行对应的应用
 
-      * 为了支持基于应用名而不是应用 ID 来查找应用 ELF 可执行文件，从而实现灵活的应用加载
-        * 在 `os/build.rs` 以及 `os/src/loader.rs` 中更新了 `link_app.S` 的格式使得它包含每个应用的名字
-        * 提供 `get_app_data_by_name` 接口获取应用的 ELF 数据
-      * 任务管理器 `TaskManager` 功能解耦：
-        * `Processor` 负责管理 CPU 上执行的任务和一些其他信息；
-        * 任务管理器 `TaskManager` 仅负责管理所有任务;
-      * 升级 `TaskControlBlock` 
-        * 新增 PID 、内核栈、应用数据大小、父子进程、退出码等信息；
-        * 进程的 PID 将作为查找进程控制块的索引；
-        * 面向进程控制块提供相应的资源自动回收机制；
+    - [ ] 一系列普通测试程序
 
-    * 进程管理机制
+- [ ] 内核层
 
-      - 初始进程的创建
+  - [ ] 为了支持基于应用名而不是应用 ID 来查找应用 ELF 可执行文件，从而实现灵活的应用加载
 
-        在内核初始化时调用 `add_initproc` 函数，其读取并解析初始应用 `initproc` 的 ELF 文件数据并创建初始进程 `INITPROC` ，随后会将它加入到全局任务管理器 `TASK_MANAGER` 中参与调度；
+    - [ ] 在 `os/build.rs` 以及 `os/src/loader.rs` 中更新了 `link_app.S` 的格式使得它包含每个应用的名字
+    - [ ] 提供 `get_app_data_by_name` 接口获取应用的 ELF 数据
 
-      - 进程切换机制
+  - [ ] 进程管理核心数据结构
 
-        新增 `schedule` 函数进行进程切换，它会首先切换到处理器的 idle 控制流 `Processor::run` ，然后选取要切换到的进程并切换过去；
+    - [ ] 任务管理器 `TaskManager` 功能解耦：
+      - [ ] `Processor` 负责管理 CPU 上执行的任务和一些其他信息；
+      - [ ] 任务管理器 `TaskManager` 仅负责管理所有任务;
 
-      - 进程调度机制
+    - [ ] 升级 `TaskControlBlock` 
+      - [ ] 新增 PID 、内核栈、应用数据大小、父子进程、退出码等信息；
+      - [ ] 进程的 PID 将作为查找进程控制块的索引；
+      - [ ] 面向进程控制块提供相应的资源自动回收机制；
 
-        `TaskManager::fetch_task` 在进程切换时选取一个进程并切换过去；
+  - [ ] 进程管理机制
 
-      - 进程生成机制
+    - [ ] 初始进程的创建
 
-        增加内核对`fork/exec` 两个系统调用的支持，它们基于 `TaskControlBlock::fork/exec`；
+      在内核初始化时调用 `add_initproc` 函数，其读取并解析初始应用 `initproc` 的 ELF 文件数据并创建初始进程 `INITPROC` ，随后会将它加入到全局任务管理器 `TASK_MANAGER` 中参与调度；
 
-      - 进程资源回收机制
+    - [ ] 进程切换机制
 
-        * 当一个进程主动退出或出错退出的时候，在 `exit_current_and_run_next` 中会立即回收一部分资源并在进程控制块中保存退出码；
-        * 父进程通过 `waitpid` 系统调用捕获到子进程退出码之后，它的进程控制块才会被回收，从而该进程的所有资源都被彻底回收；
+      新增 `schedule` 函数进行进程切换，它会首先切换到处理器的 idle 控制流 `Processor::run` ，然后选取要切换到的进程并切换过去；
 
-      - 进程的 I/O 输入机制：
+    - [ ] 进程调度机制
 
-        支持用户终端程序 `user_shell` 读取用户键盘输入的功能，还需要实现 `read` 系统调用。
+      `TaskManager::fetch_task` 在进程切换时选取一个进程并切换过去；
 
-      
+    - [ ] 进程生成机制
+
+      增加内核对`fork/exec` 两个系统调用的支持，它们基于 `TaskControlBlock::fork/exec`；
+
+    - [ ] 进程资源回收机制
+      - [ ] 当一个进程主动退出或出错退出的时候，在 `exit_current_and_run_next` 中会立即回收一部分资源并在进程控制块中保存退出码；
+      - [ ] 父进程通过 `waitpid` 系统调用捕获到子进程退出码之后，它的进程控制块才会被回收，从而该进程的所有资源都被彻底回收；
+
+  - [ ] 进程的 I/O 输入机制
+
+    支持用户终端程序 `user_shell` 读取用户键盘输入的功能，需要实现 `read` 系统调用。
+
+---
+
+* riscv-privilege-emu (isa/platform/hw) => replace/translate
+  * riscv-user-emu
+
+* ***os/hypervisor (AEE) => trap/simulate***
+  * os == hypervisor `type-1`
+  * os (hypervisor `type-2`)  
