@@ -234,20 +234,20 @@ Let's see what needs to be done:
 
 > (StpeByStep) Let's see what needs to be done: 
 
-- [ ] 用户层
+- [x] 用户层
 
   - [x] 增加系统调用
     - [x] RVOS进程模型的三个核心系统调用：`fork/exec/waitpid`
     - [x] 查看进程PID的系统调用 `getpid`
     - [x] 允许应用程序获取用户键盘输入的 `read` 系统调用
 
-  - [ ] 一组新的应用程序
+  - [x] 一组新的应用程序
 
     - [x] 运行在U-Mode下，但和内核深度绑定的特殊应用程序：
       - [x] 用户初始程序 `initproc.rs` ：会被内核 "唯一/自动/最早" 加载并执行
       - [x] shell 程序 `user_shell.rs` ：从键盘接收用户输入的应用名并执行对应的应用
 
-    - [ ] 一系列普通测试程序
+    - [x] 一系列普通测试程序
 
 - [ ] 内核层
 
