@@ -23,6 +23,26 @@ _num_app:
     .quad app_16_start
     .quad app_16_end
 
+    .global _app_names
+_app_names:
+    .string "exit"
+    .string "fantastic_text"
+    .string "forkexec"
+    .string "forktest"
+    .string "forktest2"
+    .string "forktest_simple"
+    .string "forktree"
+    .string "hello_world"
+    .string "initproc"
+    .string "matrix"
+    .string "sleep"
+    .string "sleep_simple"
+    .string "stack_overflow"
+    .string "user_shell"
+    .string "usertests"
+    .string "usertests-simple"
+    .string "yield"
+
     .section .data
     .global app_0_start
     .global app_0_end

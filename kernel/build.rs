@@ -22,6 +22,7 @@ fn insert_app_data() -> Result<()> {
         .collect();
     apps.sort();
 
+    //address
     writeln!(
         f,
         r#"
@@ -32,11 +33,21 @@ _num_app:
     .quad {}"#,
         apps.len()
     )?;
-
     for i in 0..apps.len() {
         writeln!(f, r#"    .quad app_{}_start"#, i)?;
     }
     writeln!(f, r#"    .quad app_{}_end"#, apps.len() - 1)?;
+
+    //app_name
+    writeln!(
+        f,
+        r#"
+    .global _app_names
+_app_names:"#
+    )?;
+    for app in apps.iter() {
+        writeln!(f, r#"    .string "{}""#, app)?;
+    }
 
     for (idx, app) in apps.iter().enumerate() {
         println!("app_{}: {}", idx, app);

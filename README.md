@@ -237,9 +237,9 @@ Let's see what needs to be done:
 - [x] 用户层
 
   - [x] 增加系统调用
-    - [x] RVOS进程模型的三个核心系统调用：`fork/exec/waitpid`
-    - [x] 查看进程PID的系统调用 `getpid`
-    - [x] 允许应用程序获取用户键盘输入的 `read` 系统调用
+    - [x] RVOS进程模型的三个核心系统调用：`sys_fork/exec/waitpid`
+    - [x] 查看进程PID的系统调用 `sys_getpid`
+    - [x] 允许应用程序获取用户键盘输入: `sys_read` 系统调用
 
   - [x] 一组新的应用程序
 
@@ -251,10 +251,10 @@ Let's see what needs to be done:
 
 - [ ] 内核层
 
-  - [ ] 为了支持基于应用名而不是应用 ID 来查找应用 ELF 可执行文件，从而实现灵活的应用加载
+  - [x] 支持基于应用名查找应用的 ELF 可执行文件:
 
-    - [ ] 在 `os/build.rs` 以及 `os/src/loader.rs` 中更新了 `link_app.S` 的格式使得它包含每个应用的名字
-    - [ ] 提供 `get_app_data_by_name` 接口获取应用的 ELF 数据
+    - [x] 在 `os/build.rs` 更新了 `link_app.S` 的格式使得它包含每个应用的名字
+    - [x] 提供 `get_app_data_by_name` 接口获取应用的 ELF 数据
 
   - [ ] 进程管理核心数据结构
 
