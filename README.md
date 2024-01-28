@@ -254,16 +254,16 @@ Let's see what needs to be done:
   - [x] 支持基于应用名查找应用的 ELF 可执行文件:
     - [x] 在 `os/build.rs` 更新了 `link_app.S` 的格式使得它包含每个应用的名字
     - [x] 提供 `get_app_data_by_name` 接口获取应用的 ELF 数据
-  - [ ] 进程管理核心数据结构
-    - [ ] 重构 `TaskControlBlock` 
+  - [x] 进程管理核心数据结构
+    - [x] 重构 `TaskControlBlock` 
       - [x] 新增 `PidHandle`: 全局PID分配器，提供RAII；
       - [x] 新增 `KernelStack`: 基于 `PID` 分配内核栈空间，提供RAII；
-      - [ ] 重构 `TaskControlBlock`: 拆分成 `immutable/mutable` 两部分；
-    - [ ] 任务管理器 `TaskManager` 功能解耦：
+      - [x] 重构 `TaskControlBlock`: 拆分成 `immutable/mutable` 两部分；
+    - [x] 任务管理器 `TaskManager` 功能解耦：
       - [x] 任务管理器 `TaskManager` 仅负责维护一个就绪任务队列;
-      - [ ] `Processor` 
-        - [ ] `current`: 维护正在执行的任务；
-        - [ ] `run_tasks/schedule`: 任务调度的idle控制流以及切换到该控制流的方法；
+      - [x] `Processor` 
+        - [x] `current`: 维护正在执行的任务；
+        - [x] `run_tasks/schedule`: 任务调度的idle控制流以及切换到该控制流的方法；
 
   - [ ] 进程管理机制
 

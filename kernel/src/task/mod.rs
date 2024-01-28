@@ -10,6 +10,7 @@
 //! might not be what you expect.
 
 mod context;
+mod pid;
 mod manager;
 mod processor;
 mod switch;
@@ -22,3 +23,4 @@ use task::{TaskControlBlock, TaskStatus};
 use manager::{add_task, fetch_task};
 use context::TaskContext;
 use switch::__switch;
+use pid::{pid_alloc, KernelStack, PidHandle};

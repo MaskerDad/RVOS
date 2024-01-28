@@ -8,6 +8,7 @@ use lazy_static::*;
 use crate::sync::UPSafeCell;
 use super::fetch_task;
 use super::__switch;
+use super::task::TaskStatus;
 use super::{TaskControlBlock, TaskContext};
 
 lazy_static! {
@@ -53,21 +54,35 @@ pub fn current_task() -> Option<Arc<TaskControlBlock>> {
 }
 
 pub fn current_trap_cx() -> &'static mut TaskContext {
-    
+    current_task()
+        .unwrap()
+        .inner_exclusive_access()
+        .get_trap_cx()
 }
 
-pub fn current_token() -> usize {
-    
+pub fn current_user_token() -> usize {
+    current_task()
+        .unwrap()
+        .inner_exclusive_access()
+        .get_user_token()
 }
 
 ///Processor fetch and run task
 ///IDLE_FLOW_OF_CONTROL
 pub fn run_tasks() {
     loop {
-        let mut process = PROCESSOR.exclusive_access();
+        let mut processer = PROCESSOR.exclusive_access();
         if let Some(task) = fetch_task() {
             let idle_task_cx_ptr = process.get_idle_task_cx_ptr();
-            //TODO
+            let mut task_inner = task.inner_exclusive_access();
+            task_inner.task_status = TaskStatus::Running;
+            let next_task_cx_ptr = &task_inner.task_cx as *const TaskContext;
+            drop(task_inner);
+            processer.current = Some(task);
+            drop(processer);
+            unsafe {
+                __switch(idle_task_cx_ptr, next_task_cx_ptr);
+            }
         }
     }
 }
