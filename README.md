@@ -252,20 +252,18 @@ Let's see what needs to be done:
 - [ ] 内核层
 
   - [x] 支持基于应用名查找应用的 ELF 可执行文件:
-
     - [x] 在 `os/build.rs` 更新了 `link_app.S` 的格式使得它包含每个应用的名字
     - [x] 提供 `get_app_data_by_name` 接口获取应用的 ELF 数据
-
   - [ ] 进程管理核心数据结构
-
+    - [ ] 重构 `TaskControlBlock` 
+      - [x] 新增 `PidHandle`: 全局PID分配器，提供RAII；
+      - [x] 新增 `KernelStack`: 基于 `PID` 分配内核栈空间，提供RAII；
+      - [ ] 重构 `TaskControlBlock`: 拆分成 `immutable/mutable` 两部分；
     - [ ] 任务管理器 `TaskManager` 功能解耦：
-      - [ ] `Processor` 负责管理 CPU 上执行的任务和一些其他信息；
-      - [ ] 任务管理器 `TaskManager` 仅负责管理所有任务;
-
-    - [ ] 升级 `TaskControlBlock` 
-      - [ ] 新增 PID 、内核栈、应用数据大小、父子进程、退出码等信息；
-      - [ ] 进程的 PID 将作为查找进程控制块的索引；
-      - [ ] 面向进程控制块提供相应的资源自动回收机制；
+      - [x] 任务管理器 `TaskManager` 仅负责维护一个就绪任务队列;
+      - [ ] `Processor` 
+        - [ ] `current`: 维护正在执行的任务；
+        - [ ] `run_tasks/schedule`: 任务调度的idle控制流以及切换到该控制流的方法；
 
   - [ ] 进程管理机制
 
@@ -273,13 +271,9 @@ Let's see what needs to be done:
 
       在内核初始化时调用 `add_initproc` 函数，其读取并解析初始应用 `initproc` 的 ELF 文件数据并创建初始进程 `INITPROC` ，随后会将它加入到全局任务管理器 `TASK_MANAGER` 中参与调度；
 
-    - [ ] 进程切换机制
-
-      新增 `schedule` 函数进行进程切换，它会首先切换到处理器的 idle 控制流 `Processor::run` ，然后选取要切换到的进程并切换过去；
-
     - [ ] 进程调度机制
 
-      `TaskManager::fetch_task` 在进程切换时选取一个进程并切换过去；
+      `suspend_current_and_run_next/exit_current_and_run_next`
 
     - [ ] 进程生成机制
 
