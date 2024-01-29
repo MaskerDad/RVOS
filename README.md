@@ -249,7 +249,7 @@ Let's see what needs to be done:
 
     - [x] 一系列普通测试程序
 
-- [ ] 内核层
+- [x] 内核层
 
   - [x] 支持基于应用名查找应用的 ELF 可执行文件:
     - [x] 在 `os/build.rs` 更新了 `link_app.S` 的格式使得它包含每个应用的名字
@@ -265,7 +265,7 @@ Let's see what needs to be done:
         - [x] `current`: 维护正在执行的任务；
         - [x] `run_tasks/schedule`: 任务调度的idle控制流以及切换到该控制流的方法；
 
-  - [ ] 进程管理机制
+  - [x] 进程管理机制
 
     - [x] 初始进程的创建
 
@@ -283,7 +283,7 @@ Let's see what needs to be done:
       - [x] 当一个进程主动退出或出错退出的时候，在 `exit_current_and_run_next` 中会立即回收一部分资源并在进程控制块中保存退出码；
       - [x] 父进程通过 `waitpid` 系统调用捕获到子进程退出码之后，它的进程控制块才会被回收，从而该进程的所有资源都被彻底回收；
 
-  - [ ] 进程的 I/O 输入机制
+  - [x] 进程的 I/O 输入机制
 
     支持用户终端程序 `user_shell` 读取用户键盘输入的功能，需要实现 `read` 系统调用。
 
