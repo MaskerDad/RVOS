@@ -44,10 +44,12 @@ impl Processor {
     }
 }
 
+///move ownership
 pub fn take_current_task() -> Option<Arc<TaskControlBlock>> {
     PROCESSOR.exclusive_access().take_current()
 }
 
+///only use
 pub fn current_task() -> Option<Arc<TaskControlBlock>> {
     PROCESSOR.exclusive_access().current()
 }

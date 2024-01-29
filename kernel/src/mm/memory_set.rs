@@ -296,6 +296,10 @@ impl MemorySet {
         }
         memory_set
     }
+    /// recycle frames
+    pub fn recycle_data_pages(&mut self) {
+        self.areas.clear();
+    }
 }
 
 /// map area structure, controls a contiguous piece of virtual memory

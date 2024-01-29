@@ -9,7 +9,6 @@ use crate::sync::UPSafeCell;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use core::cell::RefMut;
-use core::mem;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
