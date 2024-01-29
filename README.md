@@ -300,5 +300,51 @@ Let's see what needs to be done:
 
 ## FilesystemOS
 
-* `rvfs`：https://github.com/MaskerDad/tiny-fs
+* `tiny-fs`：https://github.com/MaskerDad/tiny-fs
 * RVOS接入 `rvos`
+
+---
+
+> Introduction
+
+FilesystemOS主要在两方面对之前的系统进行了扩展：
+
+* `PART I`:  实现了一个简单的文件系统 — `tiny-fs`，完成文件与存储块之间的数据/地址映射关系。
+
+  * 其核心数据结构包括： Superblock（表示整个文件系统结构）、inode bitmap（表示存放inode磁盘块空闲情况的位图）、data bitmap（表示存放文件数据磁盘块空闲情况的位图）、inode blks（存放文件元数据的磁盘块）和data blks（存放文件数据的磁盘块）。
+  * `tiny-fs` 中的块缓存管理器 `BlockManager` 在内存中管理有限个 `BlockCache` 磁盘块缓存，并通过Blk Interface(与块设备驱动对接的读写操作接口）与BlockDrv 块设备驱动程序进行互操作。
+
+* `PART II`: FilesystemOS增加了对文件系统的支持，并对应用程序提供了文件访问相关的系统调用服务。
+
+  * 在进程管理上，进一步扩展资源管理的范围，把打开的文件相关信息放到 fd table 数据结构中，纳入进程的管辖中，并以此为基础，提供 sys_open、sys_close、sys_read、sys_write 与访问文件相关的系统调用服务；
+
+  * 在设备管理层面，增加了块设备驱动 – BlockDrv ，通过访问块设备数据来读写文件系统与文件的各种数据；
+
+---
+
+> 核心设计
+
+//TODO
+
+---
+
+> 你能回答这些问题吗？
+
+//TODO
+
+---
+
+> (StpeByStep) Let's see what needs to be done: 
+
+- [ ] 用户库支持文件访问相关的系统调用接口
+
+  - [ ] `open/close/read/write/`
+  - [ ] 一组测试代码
+
+- [ ] 实现 `tiny-fs`
+
+  [tiny-fs实现](https://github.com/MaskerDad/tiny-fs)
+
+- [ ] `tiny-fs` 接入内核
+
+  - [ ] TODO
