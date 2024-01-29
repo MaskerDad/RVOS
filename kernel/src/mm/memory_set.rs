@@ -278,6 +278,24 @@ impl MemorySet {
             false
         }
     }
+    /// used to fork
+    pub fn from_existed_user_space(user_space: &MemorySet) -> Self {
+        let mut memory_set = Self::new_bare();
+        //map trampoline
+        memory_set.map_trampoline();
+        //copy data from another user_space (from MemorySet::areas)
+        for area in user_space.areas.iter() {
+            let new_area = MapArea::from_another(area);
+            //TODO: copy data directly here
+            memory_set.push(new_area, None);
+            for vpn in area.vpn_range {
+                let src_ppn = user_space.translate(vpn).unwrap().ppn();
+                let dst_ppn = memory_set.translate(vpn).unwrap().ppn();
+                dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
+            }
+        }
+        memory_set
+    }
 }
 
 /// map area structure, controls a contiguous piece of virtual memory
@@ -371,6 +389,18 @@ impl MapArea {
                 break;
             }
             current_vpn.step();
+        }
+    }
+    /// used to fork
+    pub fn from_another(another: &MapArea) -> Self {
+        Self {
+            vpn_range: VPNRange::new(
+                another.vpn_range.get_start(),
+                another.vpn_range.get_end()  
+            ),
+            data_frames: BTreeMap::new(),
+            map_type: another.map_type,
+            map_perm: another.map_perm,
         }
     }
 }
