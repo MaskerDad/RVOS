@@ -9,6 +9,7 @@ use crate::sync::UPSafeCell;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use core::cell::RefMut;
+use core::mem;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
@@ -148,6 +149,24 @@ impl TaskControlBlock {
     }
 
     pub fn exec(&self, elf_data: &[u8]) {
-        
+        //generate new user_space for app's elf_data
+        //memory_set with elf program headers/trampoline/trap context/user stack
+        let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
+        //update current_task(self)
+        let mut task_inner = self.inner_exclusive_access();
+        task_inner.memory_set = memory_set;
+        task_inner.trap_cx_ppn = memory_set
+            .translate(VirtAddr::from(TRAP_CONTEXT).into())
+            .unwrap()
+            .ppn();
+        //initialize trap_cx
+        let trap_cx = task_inner.get_trap_cx();
+        *trap_cx = TrapContext::app_init_context(
+            entry_point,
+            user_sp,
+            KERNEL_SPACE.exclusive_access().token(),
+            self.kernel_stack.get_top(),
+            trap_handler as usize
+        );
     }
 }
