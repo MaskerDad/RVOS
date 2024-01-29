@@ -24,7 +24,7 @@ use manager::{add_task, fetch_task};
 use context::TaskContext;
 use switch::__switch;
 use pid::{pid_alloc, KernelStack, PidHandle};
-use processor::{
+pub use processor::{
     current_task, take_current_task, current_trap_cx, current_user_token,
     run_tasks, schedule, Processor,
 };
