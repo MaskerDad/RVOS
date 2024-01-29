@@ -267,15 +267,15 @@ Let's see what needs to be done:
 
   - [ ] 进程管理机制
 
-    - [ ] 初始进程的创建
+    - [x] 初始进程的创建
 
       在内核初始化时调用 `add_initproc` 函数，其读取并解析初始应用 `initproc` 的 ELF 文件数据并创建初始进程 `INITPROC` ，随后会将它加入到全局任务管理器 `TASK_MANAGER` 中参与调度；
 
-    - [ ] 进程调度机制
+    - [x] 进程调度机制
 
       `suspend_current_and_run_next/exit_current_and_run_next`
 
-    - [ ] 进程生成机制
+    - [x] 进程生成机制
 
       增加内核对`fork/exec` 两个系统调用的支持，它们基于 `TaskControlBlock::fork/exec`；
 

@@ -24,3 +24,17 @@ use manager::{add_task, fetch_task};
 use context::TaskContext;
 use switch::__switch;
 use pid::{pid_alloc, KernelStack, PidHandle};
+
+use lazy_static::*;
+use alloc:sync::Arc;
+
+lazy_static! {
+    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(
+        TaskControlBlock::new(get_app_data_by_name("initproc").unwrap())
+    );
+}
+
+///Add init process to the TASK_MANAGER
+pub fn add_initproc() {
+    add_task(INITPROC.clone());
+}

@@ -1,11 +1,10 @@
 //! PROCESSOR
 
-use std::process;
-
 use alloc::sync::Arc;
 use lazy_static::*;
 
 use crate::sync::UPSafeCell;
+use crate::trap::TrapContext;
 use super::fetch_task;
 use super::__switch;
 use super::task::TaskStatus;
@@ -53,7 +52,7 @@ pub fn current_task() -> Option<Arc<TaskControlBlock>> {
     PROCESSOR.exclusive_access().current()
 }
 
-pub fn current_trap_cx() -> &'static mut TaskContext {
+pub fn current_trap_cx() -> &'static mut TrapContext {
     current_task()
         .unwrap()
         .inner_exclusive_access()
