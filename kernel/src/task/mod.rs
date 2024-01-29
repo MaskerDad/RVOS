@@ -14,13 +14,13 @@ mod pid;
 mod manager;
 mod processor;
 mod switch;
-//#[allow(clippy::module_inception)]
+#[allow(clippy::module_inception)]
 mod task;
 
 use crate::loader::get_app_data_by_name;
 use crate::sbi::shutdown;
 use task::{TaskControlBlock, TaskStatus};
-use manager::{add_task, fetch_task};
+pub use manager::{add_task, fetch_task};
 use context::TaskContext;
 use switch::__switch;
 use pid::{pid_alloc, KernelStack, PidHandle};
@@ -30,7 +30,7 @@ pub use processor::{
 };
 
 use lazy_static::*;
-use alloc:sync::Arc;
+use alloc::sync::Arc;
 
 lazy_static! {
     pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(

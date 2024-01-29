@@ -37,7 +37,7 @@ impl PidAllocator {
     }
 
     pub fn dealloc(&mut self, pid: usize) {
-        assert!(pid < current);
+        assert!(pid < self.current);
         assert!(
             !self.recycled.iter().any(|ppid| *ppid == pid),
             "Error: pid {} has been deallocated!",

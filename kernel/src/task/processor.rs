@@ -72,15 +72,16 @@ pub fn current_user_token() -> usize {
 ///IDLE_FLOW_OF_CONTROL
 pub fn run_tasks() {
     loop {
-        let mut processer = PROCESSOR.exclusive_access();
+        let mut processor = PROCESSOR.exclusive_access();
         if let Some(task) = fetch_task() {
-            let idle_task_cx_ptr = process.get_idle_task_cx_ptr();
+            let idle_task_cx_ptr = processor.get_idle_task_cx_ptr();
             let mut task_inner = task.inner_exclusive_access();
             task_inner.task_status = TaskStatus::Running;
             let next_task_cx_ptr = &task_inner.task_cx as *const TaskContext;
             drop(task_inner);
-            processer.current = Some(task);
-            drop(processer);
+            processor.current = Some(task);
+            drop(processor);
+            println!("before __switch");
             unsafe {
                 __switch(idle_task_cx_ptr, next_task_cx_ptr);
             }

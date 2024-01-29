@@ -1,6 +1,6 @@
 #![no_std]
 #![no_main]
-#![allow(cippy::println_empty_string)]
+#![allow(clippy::println_empty_string)]
 
 extern crate alloc;
 
@@ -30,7 +30,7 @@ pub fn main() -> i32 {
                     line.push('\0');
                     let pid = fork();
                     if pid == 0 {
-                        if exec(line.as_ptr()) == -1 {
+                        if exec(line.as_str()) == -1 {
                             println!("The application name is incorrect!");
                             return -4;
                         }

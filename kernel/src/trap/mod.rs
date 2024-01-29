@@ -68,9 +68,16 @@ pub fn trap_handler() -> ! {
         }
         Trap::Exception(Exception::StoreFault)
         | Trap::Exception(Exception::StorePageFault)
+        | Trap::Exception(Exception::InstructionFault)
+        | Trap::Exception(Exception::InstructionPageFault)
         | Trap::Exception(Exception::LoadFault)
         | Trap::Exception(Exception::LoadPageFault) => {
-            println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
+            println!(
+                "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
+                scause.cause(),
+                stval,
+                current_trap_cx().sepc,
+            );
             exit_current_and_run_next(-2);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
@@ -105,6 +112,7 @@ pub fn trap_return() -> ! {
         fn __restore();
     }
     let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
+    println!("before __restore");
     unsafe {
         asm!(
             "fence.i",

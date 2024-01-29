@@ -25,7 +25,7 @@ fn syscall(id: usize, args: [usize; 3]) -> isize {
     ret
 }
 
-pub fn syscall_read(fd: usize, buffer: &mut [u8]) -> isize {
+pub fn sys_read(fd: usize, buffer: &mut [u8]) -> isize {
     syscall(
         SYSCALL_READ, 
         [fd, buffer.as_mut_ptr() as usize, buffer.len()]
@@ -64,7 +64,7 @@ pub fn sys_getpid() -> isize {
     params:  none 
     return:  0/pid
 */
-pub fn sys_fork() -> usize {
+pub fn sys_fork() -> isize {
     syscall(SYSCALL_FORK, [0, 0, 0])
 }
 
@@ -73,7 +73,7 @@ pub fn sys_fork() -> usize {
     return:  noreturn/-1
 */
 pub fn sys_exec(path: &str) -> isize {
-    syscall(SYSCALL_EXEC, [path as usize, 0, 0])
+    syscall(SYSCALL_EXEC, [path.as_ptr() as usize, 0, 0])
 }
 
 /*

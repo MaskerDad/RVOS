@@ -153,11 +153,11 @@ impl TaskControlBlock {
         let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
         //update current_task(self)
         let mut task_inner = self.inner_exclusive_access();
-        task_inner.memory_set = memory_set;
         task_inner.trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
+        task_inner.memory_set = memory_set;
         //initialize trap_cx
         let trap_cx = task_inner.get_trap_cx();
         *trap_cx = TrapContext::app_init_context(
